@@ -96,6 +96,20 @@ plot(adm1$geometry,col=NA, border = "red",lwd=1, add=TRUE)
 plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
 
 ```
+Compte tenu des fortes différences de densité de population à l'intérieur du pays, il peut s'avérer intéressant de produire des cartogrammes où la surface est déformée par la population. On peut ainsi produire à l'aide du petit logiciel [Scapetoad](http://scapetoad.choros.place/download.php) une vision un peu différente du pays où le poids démographique du sud est mis en valeur. 
+
+```{r, fig.width=5,fig.cap="Cartogramme du Benin selon la population en 2019 (Source : OCHA-ROWCA)"}
+
+adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
+
+par(mar=c(0,0,0,0))
+plot(adm2bis$geometry,col="lightyellow", border = "gray20",lwd=0.5)
+
+
+```
+
+
+
 
 ## Villages et localités vers 2015
 
@@ -170,7 +184,7 @@ plot.HCPC(cah,choice = "map", label.cex=0.3)
 
 Il reste à visualiser les classes. On crée pour cela une fonction assez complexe de comparaison entre le profil de celles-ci et le profil du Bénin, inspirée d'un programme trouvé sur un [forum du CIRAD](http://forums.cirad.fr/logiciel-R/viewtopic.php?t=9381) 
 
-```{r, fig.height=8, echo=FALSE}
+```{r, fig.height=8, echo=FALSE, fig.cap = "Profils moyens des classes (source : OCHA)"}
 pyrclas <- function(numclas=1) {  
 ages<- data.table(cah$data.clust)
 fem<-ages[,list(F_00_04 = sum(F_00_04),
@@ -321,7 +335,7 @@ p5<-pyrclas(5)+ theme(legend.position = "none")
 
 
 
-plot_grid(p1, p2, p3, p4, p5, leg,labels = c("1", "2", "3", "4", "5","Légende"), align = "hv",ncol=2)
+plot_grid(p1, p2, p3, p4, p5, leg,labels = c("1", "2", "3", "4", "5",""), align = "hv",ncol=2)
 
 ```
 
@@ -334,11 +348,17 @@ plot_grid(p1, p2, p3, p4, p5, leg,labels = c("1", "2", "3", "4", "5","Légende")
 On peut visualiser la distribution de ces cinq classes sur une carte : 
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.cap = "Distribution spatiale des classes (source : OCHA)"}
+
+par(mfrow = c(1,2))
+
+
+### Carte classique
+
 adm2$clust<-cah$data.clust$clust
 
 # set theme
-mf_theme("dark")
+mf_theme("candy")
 # plot administrative status
 mf_map(
   x = adm2, 
@@ -351,11 +371,36 @@ mf_map(
 )
 
 # layout
-mf_layout(title = "Typologie des structures par âge et sexe du Bénin (2019)",  
+mf_layout(title = "Carte géométrique",  
           scale = "FALSE",
           credits = paste0("Sources: OCHA, 2019\n",
                             "Ecole d'été CIST 2022"))
 
+
+
+### Carte anamorphosée par la population
+
+
+adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
+adm2bis$clust<-cah$data.clust$clust
+# set theme
+mf_theme("candy")
+# plot administrative status
+mf_map(
+  x = adm2bis, 
+  var = "clust", 
+  type = "typo",
+  pal = c("red", "orange","yellow","green","blue"), 
+  lwd = .5,
+  leg_pos = "topright",
+  leg_title = ""
+)
+
+# layout
+mf_layout(title = "Cartogramme démographique",  
+          scale = "FALSE",
+          credits = paste0("Sources: OCHA, 2019\n",
+                            "Ecole d'été CIST 2022"))
 
 ```
 
