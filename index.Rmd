@@ -30,10 +30,15 @@ library(sf)
 library(leaflet)
 library(FactoMineR)
 library(mapsf)
+library(data.table)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(cowplot)
 
 ## Global options
 options(max.print="75")
-opts_chunk$set(echo=TRUE,
+opts_chunk$set(echo=FALSE,
 	             cache=FALSE,
                prompt=FALSE,
                tidy=FALSE,
@@ -97,7 +102,7 @@ plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
 Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
 
 ```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
-loc<-st_read("data/settlement/ben_plp_NGA.shp")
+loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
 par(mar=c(0,0,0,0))
 plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
 plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
@@ -163,9 +168,170 @@ plot.HCPC(cah,choice = "tree")
 plot.HCPC(cah,choice = "map", label.cex=0.3)
 ```
 
+Il reste à visualiser les classes. On crée pour cela une fonction assez complexe de comparaison entre le profil de celles-ci et le profil du Bénin, inspirée d'un programme trouvé sur un [forum du CIRAD](http://forums.cirad.fr/logiciel-R/viewtopic.php?t=9381) 
+
+```{r, fig.width=10, echo=FALSE}
+pyrclas <- function(numclas=1) {  
+ages<- data.table(cah$data.clust)
+fem<-ages[,list(F_00_04 = sum(F_00_04),
+                 F_05_09 = sum(F_05_09),
+                 F_10_14 = sum(F_10_14),
+                 F_15_19 = sum(F_15_19),
+                 F_20_24 = sum(F_20_24),
+                 F_25_29 = sum(F_25_29),
+                 F_30_34 = sum(F_30_34),
+                 F_35_39 = sum(F_35_39),
+                 F_40_44 = sum(F_40_44),
+                 F_45_49 = sum(F_45_49),
+                 F_50_54 = sum(F_50_54),
+                 F_55_59 = sum(F_55_59),
+                 F_60_64 = sum(F_60_64),
+                 F_65_69 = sum(F_65_69),
+                 F_70_74 = sum(F_70_74),
+                 F_75_79 = sum(F_75_79),
+                 F_80plus = sum(F_80plus)
+                 ),list(clust)]
+
+femtot<-fem[,list(F_00_04 = sum(F_00_04),
+                 F_05_09 = sum(F_05_09),
+                 F_10_14 = sum(F_10_14),
+                 F_15_19 = sum(F_15_19),
+                 F_20_24 = sum(F_20_24),
+                 F_25_29 = sum(F_25_29),
+                 F_30_34 = sum(F_30_34),
+                 F_35_39 = sum(F_35_39),
+                 F_40_44 = sum(F_40_44),
+                 F_45_49 = sum(F_45_49),
+                 F_50_54 = sum(F_50_54),
+                 F_55_59 = sum(F_55_59),
+                 F_60_64 = sum(F_60_64),
+                 F_65_69 = sum(F_65_69),
+                 F_70_74 = sum(F_70_74),
+                 F_75_79 = sum(F_75_79),
+                 F_80plus = sum(F_80plus)
+                 )]
 
 
-```{r}
+
+hom<-ages[,list(M_00_04 = sum(M_00_04),
+                 M_05_09 = sum(M_05_09),
+                 M_10_14 = sum(M_10_14),
+                 M_15_19 = sum(M_15_19),
+                 M_20_24 = sum(M_20_24),
+                 M_25_29 = sum(M_25_29),
+                 M_30_34 = sum(M_30_34),
+                 M_35_39 = sum(M_35_39),
+                 M_40_44 = sum(M_40_44),
+                 M_45_49 = sum(M_45_49),
+                 M_50_54 = sum(M_50_54),
+                 M_55_59 = sum(M_55_59),
+                 M_60_64 = sum(M_60_64),
+                 M_65_69 = sum(M_65_69),
+                 M_70_74 = sum(M_70_74),
+                 M_75_79 = sum(M_75_79),
+                 M_80plus = sum(M_80plus)
+                 ),list(clust)]
+
+homtot<-hom[,list(M_00_04 = sum(M_00_04),
+                 M_05_09 = sum(M_05_09),
+                 M_10_14 = sum(M_10_14),
+                 M_15_19 = sum(M_15_19),
+                 M_20_24 = sum(M_20_24),
+                 M_25_29 = sum(M_25_29),
+                 M_30_34 = sum(M_30_34),
+                 M_35_39 = sum(M_35_39),
+                 M_40_44 = sum(M_40_44),
+                 M_45_49 = sum(M_45_49),
+                 M_50_54 = sum(M_50_54),
+                 M_55_59 = sum(M_55_59),
+                 M_60_64 = sum(M_60_64),
+                 M_65_69 = sum(M_65_69),
+                 M_70_74 = sum(M_70_74),
+                 M_75_79 = sum(M_75_79),
+                 M_80plus = sum(M_80plus)
+                 )]
+
+
+
+# Creation de la base "donnee1"
+donnee1<-c(1:17)
+donnee1<-as.data.frame(donnee1)
+donnee1$age<-c("0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39",
+               "40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80 et +")
+donnee1$nbrM<-as.numeric(hom[numclas,2:18])
+donnee1$nbrM<-100*donnee1$nbrM/sum(donnee1$nbrM)
+donnee1$nbrF<-as.numeric(fem[numclas,2:18])
+donnee1$nbrF<-100*donnee1$nbrF/sum(donnee1$nbrF)
+Classe = donnee1
+
+donnee2<-c(1:17)
+donnee2<-as.data.frame(donnee2)
+donnee2$age<-c("0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39",
+               "40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80 et +")
+donnee2$nbrM<-as.numeric(homtot)
+donnee2$nbrM<-100*donnee2$nbrM/sum(donnee2$nbrM)
+donnee2$nbrF<-as.numeric(femtot)
+donnee2$nbrF<-100*donnee2$nbrF/sum(donnee2$nbrF)
+Benin = donnee2
+
+# Reformat data
+donnee <- bind_rows(
+  Classe %>% mutate(data = "Classe", Classe = NULL),
+  Benin %>% mutate(data = "Benin", Benin = NULL)
+) %>%
+  mutate(age = factor(x = age, levels = unique(age))) %>%
+  gather(key = "label", value = "nombre", nbrM, nbrF) %>%
+  mutate(
+    sex = factor(x = unname(c("nbrM" = "Hommes", "nbrF" = "Femmes")[label]), levels = c("Femmes", "Hommes")),
+    direction = c("nbrM" = -1, "nbrF" = 1)[label],
+    alpha = data
+  )
+
+g <- ggplot() +
+  theme_classic() +
+  geom_bar(
+    data = filter(donnee, data=="Benin"),
+    aes(x = age, y = nombre*direction, fill = sex, group = data, alpha = alpha),
+    stat = "identity",
+    width = 0.90
+  ) +
+  geom_bar(
+    data = filter(donnee, data=="Classe"),
+    aes(x = age, y = nombre*direction, fill = sex, group = data, alpha = alpha),
+    stat = "identity",
+    width = 0.45
+  ) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  scale_y_continuous(labels = function(x){paste0(abs(x), "%")}) +
+  scale_alpha_manual(values = c(0.2, 1), breaks = c("Benin", "Classe")) +
+  scale_fill_discrete(drop = FALSE) +
+  labs(x = "Age", y = NULL, fill = "Sexe")
+
+return(g)
+
+}
+
+p1<-pyrclas(1)
+p2<-pyrclas(2)
+p3<-pyrclas(3)
+p4<-pyrclas(4)
+p5<-pyrclas(5)
+
+plot_grid(p1, p2, p3, p4, p5, labels = c("1", "2", "3", "4", "5"), align = "hv",ncol=2)
+
+```
+
+- la **classe 1** : correspond à une population beaucoup plus jeune que la moyenne du pays avec un excédent de 0-9 ans et un déficit de 30 ans et plus. C'est la partie du pays où la transition démographique semble être la plus tardive
+- la **classe 2** : présente également un profil de population jeune avec un excédent de 5-14 ans, mais se caractérise par une réduction relative des 0-4 ans qui témoigne soit d'une baisse de la fécondité, soit d'un exode rural des jeunes ménages avec enfants.
+- la **classe 3** correspond au profil moyen du pays.
+- la **classe 4** est caractérisée par un excédent de personnes âgées et un déficit à la fois de jeunes enfants et de jeunes adultes. Elle correspond à des zones de vieillissment relatif de la population, soit sous l'effet de l'exode rural, soit en raison d'une baisse de la fécondité.
+- la **classe 5** est caractérise par une forte surreprésentation des jeunes adultes et des persones âgées, associée à un net déficit des enfants jeunes de 0 à 14 ans. Il s'agit vraisemblablement de zones urbaines caractérisées par une fécodité plus tardive et une meilleure espérance de vie.  
+
+On peut visualiser la distribution de ces cinq classes sur une carte : 
+
+
+```{r, echo=FALSE}
 adm2$clust<-cah$data.clust$clust
 
 # set theme
