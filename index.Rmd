@@ -170,7 +170,7 @@ plot.HCPC(cah,choice = "map", label.cex=0.3)
 
 Il reste à visualiser les classes. On crée pour cela une fonction assez complexe de comparaison entre le profil de celles-ci et le profil du Bénin, inspirée d'un programme trouvé sur un [forum du CIRAD](http://forums.cirad.fr/logiciel-R/viewtopic.php?t=9381) 
 
-```{r, fig.width=10, echo=FALSE}
+```{r, fig.height=8, echo=FALSE}
 pyrclas <- function(numclas=1) {  
 ages<- data.table(cah$data.clust)
 fem<-ages[,list(F_00_04 = sum(F_00_04),
@@ -312,13 +312,16 @@ return(g)
 
 }
 
-p1<-pyrclas(1)
-p2<-pyrclas(2)
-p3<-pyrclas(3)
-p4<-pyrclas(4)
-p5<-pyrclas(5)
+leg <- get_legend(pyrclas(1))
+p1<-pyrclas(1)+ theme(legend.position = "none")
+p2<-pyrclas(2)+ theme(legend.position = "none")
+p3<-pyrclas(3)+ theme(legend.position = "none")
+p4<-pyrclas(4)+ theme(legend.position = "none")
+p5<-pyrclas(5)+ theme(legend.position = "none")
 
-plot_grid(p1, p2, p3, p4, p5, labels = c("1", "2", "3", "4", "5"), align = "hv",ncol=2)
+
+
+plot_grid(p1, p2, p3, p4, p5, leg,labels = c("1", "2", "3", "4", "5","Légende"), align = "hv",ncol=2)
 
 ```
 
