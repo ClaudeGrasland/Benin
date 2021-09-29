@@ -407,6 +407,32 @@ mf_layout(title = "Cartogramme démographique",
 
 
 
+## Alphabetisation et langues parlées (2013)
+
+Ce fichier qui est accessible sur HDX en suivant [ce lien](https://data.humdata.org/dataset/benin-languages) a été mis à disposition par l'organisation [Translators without borders](https://translatorswithoutborders.org/) mais l'analyse des métadonnées montre qu'il s'agit en fait de données extraites du recensement géénral de population du Bénin de 2013 :
+
+
+
+
+> Created by Translators without Borders,  Uploaded on Jun-21, Version 1
+
+>**Notes and caveats**
+
+>  + All data is drawn from government survey results and is subject to any associated limitations or distortions present in the source data.
+>  + Literacy was measured as the ability to read and write in any language.
+Languages with population shares less than 0.01% or under 1,000 people (whichever is greater) have been aggregated into the “Other” field.
+>  + All decimal values have been rounded to a maximum of 3 decimal places. As a result language shares may not total 100%.
+>  + Empty values represent non-existent data and should not be treated as zero values.
+Data is available under an Attribution NonCommercial ShareAlike 4.0 International license (CC BY NC SA 4.0)
+
+>**Copyright and terms of use**
+
+>  + You are free to share and adapt the data subject to requirements for attribution and non commercial use. 
+>  + Any derivative work must be distributed under the same license as the original. Full terms at 
+https://creativecommons.org/licenses/by nc sa/4.0/
+
+
+
 
 # Bibliographie {-}
 
@@ -422,6 +448,9 @@ mf_layout(title = "Cartogramme démographique",
 kableExtra::kable_styling(kable(sessionRzine()[[1]], row.names = F))
 kableExtra::kable_styling(kable(sessionRzine()[[2]], row.names = F))
 ```
+
+
+
 
 
 ## Citation {-}
