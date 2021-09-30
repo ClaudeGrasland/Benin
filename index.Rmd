@@ -35,6 +35,8 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
+library(DT)
+library(stargazer)
 
 ## Global options
 options(max.print="75")
@@ -451,6 +453,117 @@ saveRDS(map,"data/langues/bj_lang_admin2_map.rda")
 
 
 ```
+
+
+### Variables d'alphabétisation
+
+Le fichier comporte tout d'abord un ensemble de variables concernant le niveau d'alphabétisation des hommes et des femmes de plus de 6 ans en 2013. Voici à titre indicatif les valeurs par département et pour l'ensemble du pays :  
+
+
+```{r}
+dep<-read.table("data/langues/bj_lang_adm1_correct.csv", sep=";",header =TRUE, dec=",")
+dep<-dep[,c(1:2,77:82)]
+kable(dep)
+```
+
+Ce tableau se prêtera particulièrement bien à des exercices d'initiation à la statistiques et la cartographie sous R puisqu'il comporte à la fois des stocks (population par sexe), des taux (% de population alphabétisée par sexe) et une possibilité de les combiner pour retrouver le nombre de personnes alphabétisée. Il s'inscrit par ailleurs pleinement dans la thématique des inégalités territoriales. 
+
+On peut à titre d'exemple construire une cartographie du niveau d'alphabétisation des hommes et des femmes par département du Bénin en 2013 (carte choroplèthe) et superposer par dessus les effectifs correspondants d'hommes et de femmes alphabétisés. 
+
+
+
+```{r, echo=FALSE, fig.cap = "Alphabétisation des hommes et femmes du Bénin par département en 2013 (source : RP Bénin 2013, via OCHA)"}
+
+# calcul du nombre de pers. alphabétisées par sexe
+dep$literacy_female_pop <- dep$literacy_female*dep$pop_female
+dep$literacy_male_pop <- dep$literacy_male*dep$pop_male
+
+# Chargement de la géométrie
+map <- st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp", quiet=TRUE)  %>% select(admin1Pcod)     
+
+# Jointure
+mapdep<-merge(map,dep,by.x="admin1Pcod",by.y="admin1_code")
+
+par(mfrow = c(1,2))
+
+
+mf_theme("darkula")
+mapdep %>% 
+  mf_map("literacy_female", 
+         type = "choro",
+          breaks = c(0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9),
+         leg_title = "%", 
+         leg_pos = "right",
+         ) %>%
+  mf_map("literacy_female_pop", 
+         type = "prop",
+         leg_title = "effectif", 
+         leg_pos = "left",
+         inches=0.1
+         ) 
+
+   mf_layout(title = "Femmes", 
+          credits = "EE Cist 2022, Source : RP 2013",
+          scale = FALSE,
+          arrow = FALSE)
+
+mf_theme("darkula")
+mapdep %>% 
+  mf_map("literacy_male", 
+         breaks = c(0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9),
+         type = "choro",
+         leg_title = "%", 
+         leg_pos = "right"
+         ) %>%
+  mf_map("literacy_male_pop", 
+         type = "prop",
+         leg_title = "effectif", 
+         leg_pos = "left",
+         inches=0.1
+         ) 
+   mf_layout(title = "Hommes", 
+          credits = "EE Cist 2022, Source : RP 2013",
+          scale = FALSE,
+          arrow = FALSE)
+
+
+```
+
+On voit apparaître alors une assez forte corrrélation entre les deux distributions, même si les femmes sont moins alphabétisés que les hommes. Ce qui suggère un exercice d'apprentissage de la régression linéaire entre les deux variables.
+
+```{r}
+mod.reg <- lm(dep$literacy_female~dep$literacy_male)
+#stargazer(mod.reg,type = "html")
+ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = admin1_name) +
+                     geom_point(col="red") + 
+                     geom_smooth(method="lm") +
+                     geom_text(cex=3, nudge_y=2) +
+                     scale_x_continuous("Taux d'alphabétisation des hommes (%)") +
+                     scale_y_continuous("Taux d'alphabétisation des femmes (%)") +
+                     ggtitle("Inégalités d'alphabétisation des départements du Benin par sexe",
+                             subtitle = "Source : RP 2013 via OCHA")
+```
+
+<table style="text-align:center"><tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"></td><td><em>Dependent variable:</em></td></tr>
+<tr><td></td><td colspan="1" style="border-bottom: 1px solid black"></td></tr>
+<tr><td style="text-align:left"></td><td>literacy_female</td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">literacy_male</td><td>0.793<sup>***</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.068)</td></tr>
+<tr><td style="text-align:left"></td><td></td></tr>
+<tr><td style="text-align:left">Constant</td><td>-0.047</td></tr>
+<tr><td style="text-align:left"></td><td>(0.043)</td></tr>
+<tr><td style="text-align:left"></td><td></td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">Observations</td><td>12</td></tr>
+<tr><td style="text-align:left">R<sup>2</sup></td><td>0.932</td></tr>
+<tr><td style="text-align:left">Adjusted R<sup>2</sup></td><td>0.925</td></tr>
+<tr><td style="text-align:left">Residual Std. Error</td><td>0.038 (df = 10)</td></tr>
+<tr><td style="text-align:left">F Statistic</td><td>136.646<sup>***</sup> (df = 1; 10)</td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"><em>Note:</em></td><td style="text-align:right"><sup>*</sup>p<0.1; <sup>**</sup>p<0.05; <sup>***</sup>p<0.01</td></tr>
+</table>
+
+Les résultats mettent en évidence le fait que l'alphabétisation des femmes au Bénin en 2013 est en moyenne inférieure de 20% à celle des hommes (le paramètre b de la régression est non significatif) et la relation est statistiquement très significative (r2  = 93 \%, p < 0.001). Il existe notamment des résidus c'est-à-dire des départements où la scolarisation des femmes estimée en fonction de celle des hommes est plus forte que prévue (*Alibori, Borgou, Littoral*) ou plus faible que prévue (*Plateau, Couffo, Mono*). 
+
+Le même modèle appliqué au niveau des communes permettrait une analyse plus fine des résultats à travers une carte des résidus. On pourrait aussi imaginer une analyse mutiscalaire croisant les écarts des communes à la moyenne du pays, de leur département et des communes voisines à l'aide du package `mta`. Bref, il s'agit sans nul doute d'un excellent exemple pédagogique pour l'école d'été CIST2022.
 
 
 
