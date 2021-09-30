@@ -409,9 +409,10 @@ mf_layout(title = "Cartogramme démographique",
 
 ## Alphabetisation et langues parlées (2013)
 
+
+### Métadonnées 
+
 Ce fichier qui est accessible sur HDX en suivant [ce lien](https://data.humdata.org/dataset/benin-languages) a été mis à disposition par l'organisation [Translators without borders](https://translatorswithoutborders.org/) mais l'analyse des métadonnées montre qu'il s'agit en fait de données extraites du recensement géénral de population du Bénin de 2013 :
-
-
 
 
 > Created by Translators without Borders,  Uploaded on Jun-21, Version 1
@@ -430,6 +431,27 @@ Data is available under an Attribution NonCommercial ShareAlike 4.0 Internationa
 >  + You are free to share and adapt the data subject to requirements for attribution and non commercial use. 
 >  + Any derivative work must be distributed under the same license as the original. Full terms at 
 https://creativecommons.org/licenses/by nc sa/4.0/
+
+
+### Préparation des données
+
+Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal et en créant un fichier unique au format sf (spatial feature) pour les analyses ultérieures. 
+
+```{r}
+don<-read.table(file = "data/langues/bj_lang_adm2_correct.csv",
+                sep=";",
+                header =T,
+                dec=",")
+
+map <- st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE) %>%    
+        select(admin2_code = admin2Pcod) %>% 
+        inner_join(don)
+
+saveRDS(map,"data/langues/bj_lang_admin2_map.rda")
+
+
+```
+
 
 
 
