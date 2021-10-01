@@ -104,15 +104,37 @@ adm0<-st_read("data/admin/ben_adm0.shp",quiet = TRUE)
 adm1<-st_read("data/admin/ben_adm1.shp",quiet = TRUE)
 adm2<-st_read("data/admin/ben_adm2.dbf", quiet = TRUE)
 
-par(mar=c(0,0,0,0))
-plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-plot(adm1$geometry,col=NA, border = "red",lwd=1, add=TRUE)
-plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
-
 ```
 
 
+On peut vérifier la qualité des fichiers en effectuant un calage sur OpenStreetMap à l'aide du package `leaflet` : 
 
+
+```{r, fig.width=5,fig.cap="Superposition des fonds de carte sur OSM"}
+
+
+
+map <- leaflet() %>% 
+            addTiles() %>%
+            setView(lat = 8, lng=2.1, zoom = 6) %>%
+              addPolygons(data = adm2,
+                          label = ~ADM2_NAME,
+                          highlightOptions = TRUE,
+                           fill = TRUE,
+                           color = "orange",
+                           weight = 3 ) %>%
+             addPolygons(data = adm1,
+                        fill = FALSE,
+                        color = "red",
+                        weight = 2) %>%
+             addPolygons(data = adm0,
+                        fill = FALSE,
+                        color = "black",
+                        weight = 1) 
+  
+
+map
+```
 
 
 
