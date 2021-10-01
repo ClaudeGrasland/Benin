@@ -55,18 +55,27 @@ opts_chunk$set(echo=FALSE,
 
 
 
-# Humanitarian Data Exchange
+# Sources
 
-Le signe **OCHA** désigne le **United Nation Office for the Coordination of Human Affairs** dont la vocation est de fournir une aide dans les situations d'urgence. Sa mission qui est expliquée en détail sur [son site web](https://www.unocha.org/about-ocha) comporte de nombreux volets. Cette agence est organisée sur un plan régional et comporte notamment une délégation spécialisée dans les pays d'Afrique Centrale et de l'Ouest appelée **OCHA-ROWCA** qui couvre l'ensemble despays ciblés par l'école d'été du CIST.
+Nous inventorions ici les principales sources de données utilisables pour le Bénin ou les autres pays de la formation.
+
+## Humanitarian Data Exchange (HDX)
+
+Il s'agit d'une source majeure qui semble utilisable dans tous les pays. 
+
+### OCHA
+
+Le sigle **OCHA** désigne le **United Nation Office for the Coordination of Human Affairs** dont la vocation est de fournir une aide dans les situations d'urgence. Sa mission qui est expliquée en détail sur [son site web](https://www.unocha.org/about-ocha) comporte de nombreux volets. Cette agence est organisée sur un plan régional et comporte notamment une délégation spécialisée dans les pays d'Afrique Centrale et de l'Ouest appelée **OCHA-ROWCA** qui couvre l'ensemble despays ciblés par l'école d'été du CIST.
+
+
+### HDX
 
 Pour mener à bien ses actions l'OCHA-ROWCA a développé un grand nombre de bases de données qui sont mises à jour régulièrement avec un accès à première vue facile. Ces données sont accessiblesà travers la plateforme [Humanitarian Data Exchange (HDX)](https://data.humdata.org/) qui semble avoir été mise au point par OCHA. Cette plateforme HDX ne comporte pas seulement des données mais aussi différents outils de visualisation ou d'analyse. 
 
 Cela pourrait donc constituer une source majeure de données pour l'école d'été CIST 2022-2023, mais il faut en faire un inventaire précis. L'objet de cette note est de procéder à quelques explorations préliminaires en prenant comme cible le Bénin. 
 
 
-
-
-Si nous effectuons une requête `Benin`  sur le site de données HDX ce qui conduit à une liste de 25 sources de données provenant soit de OCHA-ROWCA, soit d'autres agences des Nations-Unies (FAO, WorldBank, WolrdPop, ...). On trouve encore plus de sources (environ 200) si on utilise le menu de recherche par pays car le moteur ajoute dans ce cas des bases de données transnationales. 
+Si nous effectuons une requête `Benin`  sur le site de données HDX ce qui conduit à une liste de 142 sources de données provenant soit de OCHA-ROWCA, soit d'autres agences des Nations-Unies (FAO, WorldBank, WolrdPop, ...). On trouve encore plus de sources (environ 200) si on utilise le menu de recherche par pays car le moteur ajoute dans ce cas des bases de données transnationales. 
 
 Le HDX est donc un véritable hub de concentration des données les plus récentes sur les pays qui nousintéressent pour l'école d'été, et pas seulement le Benin.
 
@@ -79,12 +88,13 @@ knitr::include_graphics("data/figures/HDX.png")
 Comme on ne peut tout explorer d'un coup, nous commençons par les données qui viennet à proprement parler d'OCHA-ROWCA. 
 
 
+# Données 
 
-Nous procédons ci-dessous à l'inventaire des sources mises à jour pour le Benin sur HDX.
+Dans cette section nous proposons de rassembler des tableaux de données harmonisées en vue de l'école d'été CIST 2022. Nous privilégions l'exemple du Bénin qui sera le lieu de la formation. Chaque tableau de données fait l'objet d'un exemple rapide d'application de méthodes statistiques ou carographiques afin de vérifier la fiabilité et la qualité des données 
 
 ## Limites administratives 
 
-Le dossier des limites administratives du Benin ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. En pratique, les limites sont celles du recensement de 2013. 
+Le dossier des limites administratives du Benin fourni par HDX ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. En pratique, les limites sont celles du recensement de 2013. 
 
 **N.B.** nous avons toutefois découvert une erreur importante dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons également constaté une variabilité des noms de vraiables désignant les codes dans la base OCHA. C'est pourquoi nous avons préféré harmoniser les fichiers. 
 
@@ -105,46 +115,10 @@ plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
 
 
 
-## Villages et localités vers 2015
 
-Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
+## Pyramide des âges 2019 
 
-```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
-loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
-par(mar=c(0,0,0,0))
-plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
-
-```
-
-A titre de vérification de la précision, nous effectuons une superposition sur le fonds de carte OpenStreetMap pour la commune de Ouidah (code BJ0304 ou BEN003004) ou aura lieu l'école d'été du CIST. En cliquant sur les points onpeut comparer leur nom avec celui des localités indiquées par OSM.
-
-```{r, fig.width=5,fig.cap="Projection des données OCHA-ROWCA sur Open Street Map (commune de Ouidah"}
-map<-adm2[adm2$admin2Pcod=="BJ0304",]
-map<-st_transform(map,4326)
-
-vil<-loc[loc$RowcaCode2=="BEN003004",]
-vil<-st_transform(vil,4326)
-
-
-map <- leaflet() %>% 
-            addTiles() %>%
-            setView(lat = 6.4, lng=2.1, zoom = 11) %>%
-            addPolygons(data = map,
-                        fill = FALSE,
-                        color = "red",
-                        weight = 2) %>%
-             addMarkers(data = vil,
-                        label = ~FULL_NAME_)
-
-map
-```
-
-Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
-
-## Pyramide des âges 2019 (estim.)
-
-Un dossier [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. A titre d'exemple, on réalise une AFC sur la pyramide des âges des 77 communes
+Un dossier du HDX [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. A titre d'exemple, on réalise une AFC sur la pyramide des âges des 77 communes
 
 
 ```{r, fig.cap="AFC sur les structures par âge et sexe des communes du Benin en 2019 (Source : OCHA-ROWCA)"}
@@ -378,7 +352,7 @@ mf_layout(title = "Carte géométrique",
 
 
 
-## Alphabetisation et langues parlées (2013)
+## Alphabetisation et langues (2013)
 
 
 ### Métadonnées 
@@ -524,6 +498,43 @@ Les résultats mettent en évidence le fait que l'alphabétisation des femmes au
 Le même modèle appliqué au niveau des communes permettrait une analyse plus fine des résultats à travers une carte des résidus. On pourrait aussi imaginer une analyse mutiscalaire croisant les écarts des communes à la moyenne du pays, de leur département et des communes voisines à l'aide du package `mta`. Bref, il s'agit sans nul doute d'un excellent exemple pédagogique pour l'école d'été CIST2022.
 
 
+
+## Villages et localités vers 2015
+
+Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
+
+```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
+loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
+par(mar=c(0,0,0,0))
+plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
+plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
+
+```
+
+A titre de vérification de la précision, nous effectuons une superposition sur le fonds de carte OpenStreetMap pour la commune de Ouidah (code BJ0304 ou BEN003004) ou aura lieu l'école d'été du CIST. En cliquant sur les points onpeut comparer leur nom avec celui des localités indiquées par OSM.
+
+```{r, fig.width=5,fig.cap="Projection des données OCHA-ROWCA sur Open Street Map (commune de Ouidah"}
+map<-adm2[adm2$admin2Pcod=="BJ0304",]
+map<-st_transform(map,4326)
+
+vil<-loc[loc$RowcaCode2=="BEN003004",]
+vil<-st_transform(vil,4326)
+
+
+map <- leaflet() %>% 
+            addTiles() %>%
+            setView(lat = 6.4, lng=2.1, zoom = 11) %>%
+            addPolygons(data = map,
+                        fill = FALSE,
+                        color = "red",
+                        weight = 2) %>%
+             addMarkers(data = vil,
+                        label = ~FULL_NAME_)
+
+map
+```
+
+Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
 
 
 
