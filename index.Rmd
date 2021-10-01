@@ -82,15 +82,17 @@ Comme on ne peut tout explorer d'un coup, nous commençons par les données qui 
 
 Nous procédons ci-dessous à l'inventaire des sources mises à jour pour le Benin sur HDX.
 
-## Limites administratives en 2019
+## Limites administratives 
 
-Le dossier des limites administratives du Benin ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. 
+Le dossier des limites administratives du Benin ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. En pratique, les limites sont celles du recensement de 2013. 
+
+**N.B.** nous avons toutefois découvert une erreur importante dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons également constaté une variabilité des noms de vraiables désignant les codes dans la base OCHA. C'est pourquoi nous avons préféré harmoniser les fichiers. 
 
 ```{r, fig.width=5,fig.cap="Départements et communes du Bénin (Source : OCHA-ROWCA)"}
 
-adm0<-st_read("data/admin/ben_admbnda_adm0_1m_salb_20190816.shp",quiet = TRUE)
-adm1<-st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp",quiet = TRUE)
-adm2<-st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE)
+adm0<-st_read("data/admin/ben_adm0.shp",quiet = TRUE)
+adm1<-st_read("data/admin/ben_adm1.shp",quiet = TRUE)
+adm2<-st_read("data/admin/ben_adm2.dbf", quiet = TRUE)
 
 par(mar=c(0,0,0,0))
 plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
@@ -98,17 +100,7 @@ plot(adm1$geometry,col=NA, border = "red",lwd=1, add=TRUE)
 plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
 
 ```
-Compte tenu des fortes différences de densité de population à l'intérieur du pays, il peut s'avérer intéressant de produire des cartogrammes où la surface est déformée par la population. On peut ainsi produire à l'aide du petit logiciel [Scapetoad](http://scapetoad.choros.place/download.php) une vision un peu différente du pays où le poids démographique du sud est mis en valeur. 
 
-```{r, fig.width=5,fig.cap="Cartogramme du Benin selon la population en 2019 (Source : OCHA-ROWCA)"}
-
-adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
-
-par(mar=c(0,0,0,0))
-plot(adm2bis$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-
-
-```
 
 
 
@@ -352,7 +344,7 @@ On peut visualiser la distribution de ces cinq classes sur une carte :
 
 ```{r, echo=FALSE, fig.cap = "Distribution spatiale des classes (source : OCHA)"}
 
-par(mfrow = c(1,2))
+par(mfrow = c(1,1))
 
 
 ### Carte classique
@@ -380,29 +372,6 @@ mf_layout(title = "Carte géométrique",
 
 
 
-### Carte anamorphosée par la population
-
-
-adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
-adm2bis$clust<-cah$data.clust$clust
-# set theme
-mf_theme("candy")
-# plot administrative status
-mf_map(
-  x = adm2bis, 
-  var = "clust", 
-  type = "typo",
-  pal = c("red", "orange","yellow","green","blue"), 
-  lwd = .5,
-  leg_pos = "topright",
-  leg_title = ""
-)
-
-# layout
-mf_layout(title = "Cartogramme démographique",  
-          scale = "FALSE",
-          credits = paste0("Sources: OCHA, 2019\n",
-                            "Ecole d'été CIST 2022"))
 
 ```
 
@@ -437,22 +406,11 @@ https://creativecommons.org/licenses/by nc sa/4.0/
 
 ### Préparation des données
 
-Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal et en créant un fichier unique au format sf (spatial feature) pour les analyses ultérieures. 
+Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal.  
 
-```{r}
-don<-read.table(file = "data/langues/bj_lang_adm2_correct.csv",
-                sep=";",
-                header =T,
-                dec=",")
-
-map <- st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE) %>%    
-        select(admin2_code = admin2Pcod) %>% 
-        inner_join(don)
-
-saveRDS(map,"data/langues/bj_lang_admin2_map.rda")
+**N.B.** nous avons retrouvé l'erreur  dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons donc reconstruit les fichiers en les harmonisant avec les fonds de carte. 
 
 
-```
 
 
 ### Variables d'alphabétisation
@@ -461,7 +419,7 @@ Le fichier comporte tout d'abord un ensemble de variables concernant le niveau d
 
 
 ```{r}
-dep<-read.table("data/langues/bj_lang_adm1_correct.csv", sep=";",header =TRUE, dec=",")
+dep<-read.table("data/langues/ben_lang_adm1_correct.csv", sep=";",header =TRUE, dec=",")
 dep<-dep[,c(1:2,77:82)]
 kable(dep)
 ```
@@ -479,10 +437,10 @@ dep$literacy_female_pop <- dep$literacy_female*dep$pop_female
 dep$literacy_male_pop <- dep$literacy_male*dep$pop_male
 
 # Chargement de la géométrie
-map <- st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp", quiet=TRUE)  %>% select(admin1Pcod)     
+map <- st_read("data/admin/ben_adm1.shp", quiet=TRUE)  %>% select(ADM1_CODE)     
 
 # Jointure
-mapdep<-merge(map,dep,by.x="admin1Pcod",by.y="admin1_code")
+mapdep<-merge(map,dep,by="ADM1_CODE")
 
 par(mfrow = c(1,2))
 
@@ -534,7 +492,7 @@ On voit apparaître alors une assez forte corrrélation entre les deux distribut
 ```{r}
 mod.reg <- lm(dep$literacy_female~dep$literacy_male)
 #stargazer(mod.reg,type = "html")
-ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = admin1_name) +
+ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = ADM1_NAME) +
                      geom_point(col="red") + 
                      geom_smooth(method="lm") +
                      geom_text(cex=3, nudge_y=2) +
