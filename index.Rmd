@@ -35,12 +35,10 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
-<<<<<<< HEAD
 library(mapview)
-=======
 library(DT)
 library(stargazer)
->>>>>>> c1cbdccd47beeea407acf68bbbd89e5f38b46148
+
 
 ## Global options
 options(max.print="75")
@@ -502,26 +500,11 @@ ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = A
                              subtitle = "Source : RP 2013 via OCHA")
 ```
 
-<table style="text-align:center"><tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"></td><td><em>Dependent variable:</em></td></tr>
-<tr><td></td><td colspan="1" style="border-bottom: 1px solid black"></td></tr>
-<tr><td style="text-align:left"></td><td>literacy_female</td></tr>
-<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">literacy_male</td><td>0.793<sup>***</sup></td></tr>
-<tr><td style="text-align:left"></td><td>(0.068)</td></tr>
-<tr><td style="text-align:left"></td><td></td></tr>
-<tr><td style="text-align:left">Constant</td><td>-0.047</td></tr>
-<tr><td style="text-align:left"></td><td>(0.043)</td></tr>
-<tr><td style="text-align:left"></td><td></td></tr>
-<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">Observations</td><td>12</td></tr>
-<tr><td style="text-align:left">R<sup>2</sup></td><td>0.932</td></tr>
-<tr><td style="text-align:left">Adjusted R<sup>2</sup></td><td>0.925</td></tr>
-<tr><td style="text-align:left">Residual Std. Error</td><td>0.038 (df = 10)</td></tr>
-<tr><td style="text-align:left">F Statistic</td><td>136.646<sup>***</sup> (df = 1; 10)</td></tr>
-<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"><em>Note:</em></td><td style="text-align:right"><sup>*</sup>p<0.1; <sup>**</sup>p<0.05; <sup>***</sup>p<0.01</td></tr>
-</table>
+
 
 Les résultats mettent en évidence le fait que l'alphabétisation des femmes au Bénin en 2013 est en moyenne inférieure de 20% à celle des hommes (le paramètre b de la régression est non significatif) et la relation est statistiquement très significative (r2  = 93 \%, p < 0.001). Il existe notamment des résidus c'est-à-dire des départements où la scolarisation des femmes estimée en fonction de celle des hommes est plus forte que prévue (*Alibori, Borgou, Littoral*) ou plus faible que prévue (*Plateau, Couffo, Mono*). 
 
-<<<<<<< HEAD
+
 ## Prix de la nourriture sur les marchés (2002-2021)
 
 ### Métadonnées
@@ -553,9 +536,9 @@ st_crs(markets)<- 4326
 #mapview(markets)
 
 
-adm0<-st_read("data/admin/ben_admbnda_adm0_1m_salb_20190816.shp",quiet = TRUE)
-adm1<-st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp",quiet = TRUE)
-adm2<-st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE)
+adm0<-st_read("data/admin/ben_adm0.shp",quiet = TRUE)
+adm1<-st_read("data/admin/ben_adm1.shp",quiet = TRUE)
+adm2<-st_read("data/admin/ben_adm2.shp", quiet = TRUE)
 
 par(mar=c(0,0,0,0))
 plot(adm2$geometry,col="gray90", border = "gray20",lwd=0.5)
@@ -658,7 +641,7 @@ map
 ```
 
 Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
->>>>>>> c1cbdccd47beeea407acf68bbbd89e5f38b46148
+
 
 
 
