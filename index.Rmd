@@ -35,6 +35,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
+library(mapview)
 
 ## Global options
 options(max.print="75")
@@ -451,6 +452,101 @@ saveRDS(map,"data/langues/bj_lang_admin2_map.rda")
 
 
 ```
+
+
+## Prix de la nourriture sur les marchés (2002-2021)
+
+### Métadonnées
+
+Ce fichier qui est accessible sur HDX en suivant [ce lien](https://data.humdata.org/dataset/wfp-food-prices-for-benin) a été mis à disposition par  [World Food Programme](https://www.wfp.org/). Cette base qui semble avoir été interrompue présente l'avantage d'offrir une grande profondeur historique et une résolution spatialetrès précise puisque les prix sont localisés par marché et par semaine.
+
+>This no longer updated dataset contains Global Food Prices data from the World Food Programme covering foods such as maize, rice, beans, fish, and sugar for 76 countries and some 1,500 markets. It is updated weekly but contains to a large extent monthly data. The data goes back as far as 1992 for a few countries, although many countries started reporting from 2003 or thereafter.
+
+
+### Préparation des données
+
+Le fichier contenant les coordonnées de latitude et de longitude des marchés, il peut théoriquement être cartographié facilement à l'aide d'un outil de cartographie dynamique tel que `mapview`. Mais il peut aussi faire l'objet de multiples agrégations spatiales, temporelles, par produit. Reste évidemment à en apprécier la qualité ...
+
+Noter qu'il est nécessaire d'éliminer la seconde ligne du tableau sous excel pour pouvoir ensuite charger correctement le fichier. Il est également préférable de lire le fichier avec la fonction *fread()* du package `data.table` faut de quoi on peut avoir des problèmes d'encodage plus ou moins délicats à résoudre. 
+
+
+```{r}
+dt<-fread("data/foodprices/wfp_food_prices_ben.csv")
+kable(head(dt))
+```
+
+On peut assez facilement spatialiser le fichier qui comporte en tout 51 marchés assez bien répartiis sur l'ensemble du pays comme le montre la carte ci-desous :
+
+
+```{r}
+loc<-dt %>% filter(duplicated(market)==FALSE) %>% select(c(2,3,4,5,6)) %>% arrange (admin1,admin2, market)
+markets <- st_as_sf(loc, coords = c("longitude","latitude"))
+st_crs(markets)<- 4326
+#mapview(markets)
+
+
+adm0<-st_read("data/admin/ben_admbnda_adm0_1m_salb_20190816.shp",quiet = TRUE)
+adm1<-st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp",quiet = TRUE)
+adm2<-st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE)
+
+par(mar=c(0,0,0,0))
+plot(adm2$geometry,col="gray90", border = "gray20",lwd=0.5)
+plot(adm1$geometry,col=NA, border = "black",lwd=1, add=TRUE)
+plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
+plot(markets$geometry,col="red", bg="yellow",pch=21,add=TRUE,cex=0.7)
+```
+
+### Intérêt pédagogique 
+
+Cette base de données **multidimensionelle** peut servir d'exemple pour de nombreux exercices d'apprentissage de la statistique et de la cartographie sous R. Le prix des produits alimnentaires dépend en effet :
+
+- du type de produit (QUOI) ?
+- de la date d'achat (QUAND) ?
+- du lieu d'achat (OU ?)
+
+Pour chacune des dimensions, on peut réaliser des procédures **d'agrégation** des valeurs observées ou **d'estimation** des valeurs manquantes. A titre d'exemple, on extrait de la base de donnée l'ensemble des lignes qui concernent le riz
+
+```{r}
+riz<- dt %>% filter(substr(commodity,1,4)=="Rice") %>% 
+               select(when = date, 
+                      where1 = admin1,
+                      where2 = admin2,
+                      where3 = market,
+                      what = commodity,
+                      cost = usdprice )
+kable(head(riz))
+```
+
+
+On peut calculer le prix median du riz sur l'ensemble des points de sondage disponibles en fonction de la catégorie de riz : 
+
+```{r}
+tab<- riz %>% group_by(when, what) %>% summarize(median_cost=median(cost), nbobs = n())
+ggplot(tab) + aes(x=when,y=median_cost, color=what, size=nbobs) + geom_point() 
+```
+
+Le graphique montre plusieurs choses :
+
+- les données les plus complètes concernent le riz importé qui augmente fortement au moment de la crise de 2007-2008
+- la spatialisation des données n'est pas vraiment possible avant 2015 voire 2018
+- il y a de fortes différences de prix selon le type de riz
+
+
+Effectuons maintenant un zoom sur le priz médian du riz importé en 2020-2021 par régions :
+
+```{r}
+tab <- riz %>% filter(when >=as.Date("2020-01-01"), what =="Rice (imported)") %>%
+               group_by(when,where1) %>%
+               summarize(median_cost=median(cost))
+ggplot(tab) + aes(x=when,y=where1, fill=median_cost) +geom_tile() + 
+  scale_fill_gradient(low="white", high = "red")
+                        
+
+
+```
+
+
+
 
 
 
