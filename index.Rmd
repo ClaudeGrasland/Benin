@@ -35,7 +35,12 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(cowplot)
+<<<<<<< HEAD
 library(mapview)
+=======
+library(DT)
+library(stargazer)
+>>>>>>> c1cbdccd47beeea407acf68bbbd89e5f38b46148
 
 ## Global options
 options(max.print="75")
@@ -54,18 +59,27 @@ opts_chunk$set(echo=FALSE,
 
 
 
-# Humanitarian Data Exchange
+# Sources
 
-Le signe **OCHA** désigne le **United Nation Office for the Coordination of Human Affairs** dont la vocation est de fournir une aide dans les situations d'urgence. Sa mission qui est expliquée en détail sur [son site web](https://www.unocha.org/about-ocha) comporte de nombreux volets. Cette agence est organisée sur un plan régional et comporte notamment une délégation spécialisée dans les pays d'Afrique Centrale et de l'Ouest appelée **OCHA-ROWCA** qui couvre l'ensemble despays ciblés par l'école d'été du CIST.
+Nous inventorions ici les principales sources de données utilisables pour le Bénin ou les autres pays de la formation.
+
+## Humanitarian Data Exchange (HDX)
+
+Il s'agit d'une source majeure qui semble utilisable dans tous les pays. 
+
+### OCHA
+
+Le sigle **OCHA** désigne le **United Nation Office for the Coordination of Human Affairs** dont la vocation est de fournir une aide dans les situations d'urgence. Sa mission qui est expliquée en détail sur [son site web](https://www.unocha.org/about-ocha) comporte de nombreux volets. Cette agence est organisée sur un plan régional et comporte notamment une délégation spécialisée dans les pays d'Afrique Centrale et de l'Ouest appelée **OCHA-ROWCA** qui couvre l'ensemble despays ciblés par l'école d'été du CIST.
+
+
+### HDX
 
 Pour mener à bien ses actions l'OCHA-ROWCA a développé un grand nombre de bases de données qui sont mises à jour régulièrement avec un accès à première vue facile. Ces données sont accessiblesà travers la plateforme [Humanitarian Data Exchange (HDX)](https://data.humdata.org/) qui semble avoir été mise au point par OCHA. Cette plateforme HDX ne comporte pas seulement des données mais aussi différents outils de visualisation ou d'analyse. 
 
 Cela pourrait donc constituer une source majeure de données pour l'école d'été CIST 2022-2023, mais il faut en faire un inventaire précis. L'objet de cette note est de procéder à quelques explorations préliminaires en prenant comme cible le Bénin. 
 
 
-
-
-Si nous effectuons une requête `Benin`  sur le site de données HDX ce qui conduit à une liste de 25 sources de données provenant soit de OCHA-ROWCA, soit d'autres agences des Nations-Unies (FAO, WorldBank, WolrdPop, ...). On trouve encore plus de sources (environ 200) si on utilise le menu de recherche par pays car le moteur ajoute dans ce cas des bases de données transnationales. 
+Si nous effectuons une requête `Benin`  sur le site de données HDX ce qui conduit à une liste de 142 sources de données provenant soit de OCHA-ROWCA, soit d'autres agences des Nations-Unies (FAO, WorldBank, WolrdPop, ...). On trouve encore plus de sources (environ 200) si on utilise le menu de recherche par pays car le moteur ajoute dans ce cas des bases de données transnationales. 
 
 Le HDX est donc un véritable hub de concentration des données les plus récentes sur les pays qui nousintéressent pour l'école d'été, et pas seulement le Benin.
 
@@ -78,80 +92,59 @@ knitr::include_graphics("data/figures/HDX.png")
 Comme on ne peut tout explorer d'un coup, nous commençons par les données qui viennet à proprement parler d'OCHA-ROWCA. 
 
 
+# Données 
 
-Nous procédons ci-dessous à l'inventaire des sources mises à jour pour le Benin sur HDX.
+Dans cette section nous proposons de rassembler des tableaux de données harmonisées en vue de l'école d'été CIST 2022. Nous privilégions l'exemple du Bénin qui sera le lieu de la formation. Chaque tableau de données fait l'objet d'un exemple rapide d'application de méthodes statistiques ou carographiques afin de vérifier la fiabilité et la qualité des données 
 
-## Limites administratives en 2019
+## Limites administratives 
 
-Le dossier des limites administratives du Benin ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. 
+Le dossier des limites administratives du Benin fourni par HDX ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. En pratique, les limites sont celles du recensement de 2013. 
+
+**N.B.** nous avons toutefois découvert une erreur importante dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons également constaté une variabilité des noms de vraiables désignant les codes dans la base OCHA. C'est pourquoi nous avons préféré harmoniser les fichiers. 
 
 ```{r, fig.width=5,fig.cap="Départements et communes du Bénin (Source : OCHA-ROWCA)"}
 
-adm0<-st_read("data/admin/ben_admbnda_adm0_1m_salb_20190816.shp",quiet = TRUE)
-adm1<-st_read("data/admin/ben_admbnda_adm1_1m_salb_20190816.shp",quiet = TRUE)
-adm2<-st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE)
-
-par(mar=c(0,0,0,0))
-plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-plot(adm1$geometry,col=NA, border = "red",lwd=1, add=TRUE)
-plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
-
-```
-Compte tenu des fortes différences de densité de population à l'intérieur du pays, il peut s'avérer intéressant de produire des cartogrammes où la surface est déformée par la population. On peut ainsi produire à l'aide du petit logiciel [Scapetoad](http://scapetoad.choros.place/download.php) une vision un peu différente du pays où le poids démographique du sud est mis en valeur. 
-
-```{r, fig.width=5,fig.cap="Cartogramme du Benin selon la population en 2019 (Source : OCHA-ROWCA)"}
-
-adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
-
-par(mar=c(0,0,0,0))
-plot(adm2bis$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-
+adm0<-st_read("data/admin/ben_adm0.shp",quiet = TRUE)
+adm1<-st_read("data/admin/ben_adm1.shp",quiet = TRUE)
+adm2<-st_read("data/admin/ben_adm2.dbf", quiet = TRUE)
 
 ```
 
 
+On peut vérifier la qualité des fichiers en effectuant un calage sur OpenStreetMap à l'aide du package `leaflet` : 
 
 
-## Villages et localités vers 2015
+```{r, fig.width=5,fig.cap="Superposition des fonds de carte sur OSM"}
 
-Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
-
-```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
-loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
-par(mar=c(0,0,0,0))
-plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
-plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
-
-```
-
-A titre de vérification de la précision, nous effectuons une superposition sur le fonds de carte OpenStreetMap pour la commune de Ouidah (code BJ0304 ou BEN003004) ou aura lieu l'école d'été du CIST. En cliquant sur les points onpeut comparer leur nom avec celui des localités indiquées par OSM.
-
-```{r, fig.width=5,fig.cap="Projection des données OCHA-ROWCA sur Open Street Map (commune de Ouidah"}
-map<-adm2[adm2$admin2Pcod=="BJ0304",]
-map<-st_transform(map,4326)
-
-vil<-loc[loc$RowcaCode2=="BEN003004",]
-vil<-st_transform(vil,4326)
 
 
 map <- leaflet() %>% 
             addTiles() %>%
-            setView(lat = 6.4, lng=2.1, zoom = 11) %>%
-            addPolygons(data = map,
+            setView(lat = 8, lng=2.1, zoom = 6) %>%
+              addPolygons(data = adm2,
+                          label = ~ADM2_NAME,
+                          highlightOptions = TRUE,
+                           fill = TRUE,
+                           color = "orange",
+                           weight = 3 ) %>%
+             addPolygons(data = adm1,
                         fill = FALSE,
                         color = "red",
                         weight = 2) %>%
-             addMarkers(data = vil,
-                        label = ~FULL_NAME_)
+             addPolygons(data = adm0,
+                        fill = FALSE,
+                        color = "black",
+                        weight = 1) 
+  
 
 map
 ```
 
-Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
 
-## Pyramide des âges 2019 (estim.)
 
-Un dossier [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. A titre d'exemple, on réalise une AFC sur la pyramide des âges des 77 communes
+## Pyramide des âges 2019 
+
+Un dossier du HDX [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. A titre d'exemple, on réalise une AFC sur la pyramide des âges des 77 communes
 
 
 ```{r, fig.cap="AFC sur les structures par âge et sexe des communes du Benin en 2019 (Source : OCHA-ROWCA)"}
@@ -351,7 +344,7 @@ On peut visualiser la distribution de ces cinq classes sur une carte :
 
 ```{r, echo=FALSE, fig.cap = "Distribution spatiale des classes (source : OCHA)"}
 
-par(mfrow = c(1,2))
+par(mfrow = c(1,1))
 
 
 ### Carte classique
@@ -379,36 +372,13 @@ mf_layout(title = "Carte géométrique",
 
 
 
-### Carte anamorphosée par la population
-
-
-adm2bis<-st_read("data/admin/benpop2019.shp", quiet=T)
-adm2bis$clust<-cah$data.clust$clust
-# set theme
-mf_theme("candy")
-# plot administrative status
-mf_map(
-  x = adm2bis, 
-  var = "clust", 
-  type = "typo",
-  pal = c("red", "orange","yellow","green","blue"), 
-  lwd = .5,
-  leg_pos = "topright",
-  leg_title = ""
-)
-
-# layout
-mf_layout(title = "Cartogramme démographique",  
-          scale = "FALSE",
-          credits = paste0("Sources: OCHA, 2019\n",
-                            "Ecole d'été CIST 2022"))
 
 ```
 
 
 
 
-## Alphabetisation et langues parlées (2013)
+## Alphabetisation et langues (2013)
 
 
 ### Métadonnées 
@@ -436,24 +406,122 @@ https://creativecommons.org/licenses/by nc sa/4.0/
 
 ### Préparation des données
 
-Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal et en créant un fichier unique au format sf (spatial feature) pour les analyses ultérieures. 
+Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal.  
+
+**N.B.** nous avons retrouvé l'erreur  dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons donc reconstruit les fichiers en les harmonisant avec les fonds de carte. 
+
+
+
+
+### Variables d'alphabétisation
+
+Le fichier comporte tout d'abord un ensemble de variables concernant le niveau d'alphabétisation des hommes et des femmes de plus de 6 ans en 2013. Voici à titre indicatif les valeurs par département et pour l'ensemble du pays :  
+
 
 ```{r}
-don<-read.table(file = "data/langues/bj_lang_adm2_correct.csv",
-                sep=";",
-                header =T,
-                dec=",")
+dep<-read.table("data/langues/ben_lang_adm1_correct.csv", sep=";",header =TRUE, dec=",")
+dep<-dep[,c(1:2,77:82)]
+kable(dep)
+```
 
-map <- st_read("data/admin/ben_admbnda_adm2_1m_salb_20190816.shp", quiet = TRUE) %>%    
-        select(admin2_code = admin2Pcod) %>% 
-        inner_join(don)
+Ce tableau se prêtera particulièrement bien à des exercices d'initiation à la statistiques et la cartographie sous R puisqu'il comporte à la fois des stocks (population par sexe), des taux (% de population alphabétisée par sexe) et une possibilité de les combiner pour retrouver le nombre de personnes alphabétisée. Il s'inscrit par ailleurs pleinement dans la thématique des inégalités territoriales. 
 
-saveRDS(map,"data/langues/bj_lang_admin2_map.rda")
+On peut à titre d'exemple construire une cartographie du niveau d'alphabétisation des hommes et des femmes par département du Bénin en 2013 (carte choroplèthe) et superposer par dessus les effectifs correspondants d'hommes et de femmes alphabétisés. 
+
+
+
+```{r, echo=FALSE, fig.cap = "Alphabétisation des hommes et femmes du Bénin par département en 2013 (source : RP Bénin 2013, via OCHA)"}
+
+# calcul du nombre de pers. alphabétisées par sexe
+dep$literacy_female_pop <- dep$literacy_female*dep$pop_female
+dep$literacy_male_pop <- dep$literacy_male*dep$pop_male
+
+# Chargement de la géométrie
+map <- st_read("data/admin/ben_adm1.shp", quiet=TRUE)  %>% select(ADM1_CODE)     
+
+# Jointure
+mapdep<-merge(map,dep,by="ADM1_CODE")
+
+par(mfrow = c(1,2))
+
+
+mf_theme("darkula")
+mapdep %>% 
+  mf_map("literacy_female", 
+         type = "choro",
+          breaks = c(0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9),
+         leg_title = "%", 
+         leg_pos = "right",
+         ) %>%
+  mf_map("literacy_female_pop", 
+         type = "prop",
+         leg_title = "effectif", 
+         leg_pos = "left",
+         inches=0.1
+         ) 
+
+   mf_layout(title = "Femmes", 
+          credits = "EE Cist 2022, Source : RP 2013",
+          scale = FALSE,
+          arrow = FALSE)
+
+mf_theme("darkula")
+mapdep %>% 
+  mf_map("literacy_male", 
+         breaks = c(0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9),
+         type = "choro",
+         leg_title = "%", 
+         leg_pos = "right"
+         ) %>%
+  mf_map("literacy_male_pop", 
+         type = "prop",
+         leg_title = "effectif", 
+         leg_pos = "left",
+         inches=0.1
+         ) 
+   mf_layout(title = "Hommes", 
+          credits = "EE Cist 2022, Source : RP 2013",
+          scale = FALSE,
+          arrow = FALSE)
 
 
 ```
 
+On voit apparaître alors une assez forte corrrélation entre les deux distributions, même si les femmes sont moins alphabétisés que les hommes. Ce qui suggère un exercice d'apprentissage de la régression linéaire entre les deux variables.
 
+```{r}
+mod.reg <- lm(dep$literacy_female~dep$literacy_male)
+#stargazer(mod.reg,type = "html")
+ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = ADM1_NAME) +
+                     geom_point(col="red") + 
+                     geom_smooth(method="lm") +
+                     geom_text(cex=3, nudge_y=2) +
+                     scale_x_continuous("Taux d'alphabétisation des hommes (%)") +
+                     scale_y_continuous("Taux d'alphabétisation des femmes (%)") +
+                     ggtitle("Inégalités d'alphabétisation des départements du Benin par sexe",
+                             subtitle = "Source : RP 2013 via OCHA")
+```
+
+<table style="text-align:center"><tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"></td><td><em>Dependent variable:</em></td></tr>
+<tr><td></td><td colspan="1" style="border-bottom: 1px solid black"></td></tr>
+<tr><td style="text-align:left"></td><td>literacy_female</td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">literacy_male</td><td>0.793<sup>***</sup></td></tr>
+<tr><td style="text-align:left"></td><td>(0.068)</td></tr>
+<tr><td style="text-align:left"></td><td></td></tr>
+<tr><td style="text-align:left">Constant</td><td>-0.047</td></tr>
+<tr><td style="text-align:left"></td><td>(0.043)</td></tr>
+<tr><td style="text-align:left"></td><td></td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left">Observations</td><td>12</td></tr>
+<tr><td style="text-align:left">R<sup>2</sup></td><td>0.932</td></tr>
+<tr><td style="text-align:left">Adjusted R<sup>2</sup></td><td>0.925</td></tr>
+<tr><td style="text-align:left">Residual Std. Error</td><td>0.038 (df = 10)</td></tr>
+<tr><td style="text-align:left">F Statistic</td><td>136.646<sup>***</sup> (df = 1; 10)</td></tr>
+<tr><td colspan="2" style="border-bottom: 1px solid black"></td></tr><tr><td style="text-align:left"><em>Note:</em></td><td style="text-align:right"><sup>*</sup>p<0.1; <sup>**</sup>p<0.05; <sup>***</sup>p<0.01</td></tr>
+</table>
+
+Les résultats mettent en évidence le fait que l'alphabétisation des femmes au Bénin en 2013 est en moyenne inférieure de 20% à celle des hommes (le paramètre b de la régression est non significatif) et la relation est statistiquement très significative (r2  = 93 \%, p < 0.001). Il existe notamment des résidus c'est-à-dire des départements où la scolarisation des femmes estimée en fonction de celle des hommes est plus forte que prévue (*Alibori, Borgou, Littoral*) ou plus faible que prévue (*Plateau, Couffo, Mono*). 
+
+<<<<<<< HEAD
 ## Prix de la nourriture sur les marchés (2002-2021)
 
 ### Métadonnées
@@ -549,6 +617,48 @@ ggplot(tab) + aes(x=when,y=where1, fill=median_cost) +geom_tile() +
 
 
 
+=======
+Le même modèle appliqué au niveau des communes permettrait une analyse plus fine des résultats à travers une carte des résidus. On pourrait aussi imaginer une analyse mutiscalaire croisant les écarts des communes à la moyenne du pays, de leur département et des communes voisines à l'aide du package `mta`. Bref, il s'agit sans nul doute d'un excellent exemple pédagogique pour l'école d'été CIST2022.
+
+
+
+## Villages et localités vers 2015
+
+Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
+
+```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
+loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
+par(mar=c(0,0,0,0))
+plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
+plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
+
+```
+
+A titre de vérification de la précision, nous effectuons une superposition sur le fonds de carte OpenStreetMap pour la commune de Ouidah (code BJ0304 ou BEN003004) ou aura lieu l'école d'été du CIST. En cliquant sur les points onpeut comparer leur nom avec celui des localités indiquées par OSM.
+
+```{r, fig.width=5,fig.cap="Projection des données OCHA-ROWCA sur Open Street Map (commune de Ouidah"}
+map<-adm2[adm2$admin2Pcod=="BJ0304",]
+map<-st_transform(map,4326)
+
+vil<-loc[loc$RowcaCode2=="BEN003004",]
+vil<-st_transform(vil,4326)
+
+
+map <- leaflet() %>% 
+            addTiles() %>%
+            setView(lat = 6.4, lng=2.1, zoom = 11) %>%
+            addPolygons(data = map,
+                        fill = FALSE,
+                        color = "red",
+                        weight = 2) %>%
+             addMarkers(data = vil,
+                        label = ~FULL_NAME_)
+
+map
+```
+
+Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
+>>>>>>> c1cbdccd47beeea407acf68bbbd89e5f38b46148
 
 
 
