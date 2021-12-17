@@ -1,10 +1,12 @@
 ---
 title: "ECOLE D'ETE CIST 2022"
-subtitle: "Inventaire des données sur le Benin"
+subtitle: "Inventaire préparatoire des données"
 date: "`r Sys.Date()`"
 author: 
  - name: Claude Grasland
    affiliation: Université de Paris (Diderot), UMR 8504 Géographie-cités, FR 2007 CIST
+ - name: Hugues Pecout
+   affiliation : FR 2007 CIST
 image: "data/figures/HDX.png"   
 logo: "data/figures/HDX.png"  
 output:
@@ -38,6 +40,10 @@ library(cowplot)
 library(mapview)
 library(DT)
 library(stargazer)
+library(wbstats)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
 
 
 ## Global options
@@ -55,22 +61,36 @@ opts_chunk$set(echo=FALSE,
 # opts_knit$set(width=75)
 ```
 
+# INTRODUCTION
+
+L'objectif de ce document est d'examiner quelles sources en accès libre pourraient être utilisées pour la préparation de l'école d'été du CIST afin de construire des modules pédagogiques qui seront mis en ligne à une date mais pourront ensuite être régulièrement mises à jour.
+
+Nous avons choisi de nous focaliser sur l'exemple des données relatives au **Benin** puisque ce pays accueillera la seconde phase du projet,mais l'idée est évidemment de pouvoir constituer des tableaux comparables dans chacun des pays concernés (Togo, Côte d'Ivoire, Niger, Burkina faso, Mali, Sénégal, ...) au prix d'éventuelles adaptations.
+
+Les tableaux de données sont sélectionnées prioritairement sur leurs **qualités pédagogiques** c'est-à-dire leur intérêt pour apprendre les méthodes de statistique, cartographie ou analyse spatiale. Mais il est évidemment souhaitable que ces données possèdent également un **intérêt thématique** et que le formateur puisse proposer des interprétations des résultats. Et il faut évidemment éviter que ces données comportent des erreurs ou véhiculent des informations fausses.
+
+C'est la raison pour laquelle la sélection initiale effectuée par un enseignant-chercheur éloigné du terrain devra impérativement être validée par  des spécialistes du pays concerné, aussi bien en termes pédagogiques que thématiques.
+
+Ce document de travail est organisé en deux parties correspondant à deux échelles d'analyse :
+
+- **les données infranationales** permettent d'analyse les variations internes du territoire du Benin que ce soit dans le cadre de mailles administratives (régions, départements, communes), d'unités ponctuelles (villes, marchés, ...) ou de grilles de collecte (carroyage, données satellitaires, ...)
+
+- **les données supranationales** permettent a contrario de positionner le Benin considéré comme une seule entité vis à vis d'autres pays à l'échelle d'une région (e.g. CEDEAO), d'un continent (Afrique), voire du Monde entier.
+
+Ce document n'est évidemment pas exhaustif et devra être complété par d'autres chercheurs, notamment s'agissant des données d'enquête (e.g. EDS) ou des relevés de terrain (GPS, kobo toolbox, ...)
+
+# DONNEES INFRANATIONALES
 
 
-# Sources
 
-Nous inventorions ici les principales sources de données utilisables pour le Bénin ou les autres pays de la formation.
-
-## Humanitarian Data Exchange (HDX)
+## La source HDX (Humanitarian Data Exchange) 
 
 Il s'agit d'une source majeure qui semble utilisable dans tous les pays. 
 
-### OCHA
 
 Le sigle **OCHA** désigne le **United Nation Office for the Coordination of Human Affairs** dont la vocation est de fournir une aide dans les situations d'urgence. Sa mission qui est expliquée en détail sur [son site web](https://www.unocha.org/about-ocha) comporte de nombreux volets. Cette agence est organisée sur un plan régional et comporte notamment une délégation spécialisée dans les pays d'Afrique Centrale et de l'Ouest appelée **OCHA-ROWCA** qui couvre l'ensemble despays ciblés par l'école d'été du CIST.
 
 
-### HDX
 
 Pour mener à bien ses actions l'OCHA-ROWCA a développé un grand nombre de bases de données qui sont mises à jour régulièrement avec un accès à première vue facile. Ces données sont accessiblesà travers la plateforme [Humanitarian Data Exchange (HDX)](https://data.humdata.org/) qui semble avoir été mise au point par OCHA. Cette plateforme HDX ne comporte pas seulement des données mais aussi différents outils de visualisation ou d'analyse. 
 
@@ -90,13 +110,15 @@ knitr::include_graphics("data/figures/HDX.png")
 Comme on ne peut tout explorer d'un coup, nous commençons par les données qui viennet à proprement parler d'OCHA-ROWCA. 
 
 
-# Données 
-
-Dans cette section nous proposons de rassembler des tableaux de données harmonisées en vue de l'école d'été CIST 2022. Nous privilégions l'exemple du Bénin qui sera le lieu de la formation. Chaque tableau de données fait l'objet d'un exemple rapide d'application de méthodes statistiques ou carographiques afin de vérifier la fiabilité et la qualité des données 
+Dans les sections suivantes nous proposons de rassembler des tableaux de données harmonisées en vue de l'école d'été CIST 2022. Nous privilégions l'exemple du Bénin qui sera le lieu de la formation. Chaque tableau de données fait l'objet d'un exemple rapide d'application de méthodes statistiques ou carographiques afin de vérifier la fiabilité et la qualité des données 
 
 ## Limites administratives 
 
+
+### Métadonnées
+
 Le dossier des limites administratives du Benin fourni par HDX ([cliquer ici](https://data.humdata.org/dataset/benin-administrative-boundaries)) est accessible au format shapefile et comporte différentes couches correspondant aux différents niveaux administratifs. Sa datation laisse augurer qu'il s'agit de la situation la plus récente: les fichiers datent de juin 2021 mais leur nom comporte la séquence "20190816" qui doit plutôt correspondre au 16 Août 2019. En pratique, les limites sont celles du recensement de 2013. 
+
 
 **N.B.** nous avons toutefois découvert une erreur importante dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons également constaté une variabilité des noms de vraiables désignant les codes dans la base OCHA. C'est pourquoi nous avons préféré harmoniser les fichiers. 
 
@@ -109,7 +131,9 @@ adm2<-st_read("data/admin/ben_adm2.dbf", quiet = TRUE)
 ```
 
 
-On peut vérifier la qualité des fichiers en effectuant un calage sur OpenStreetMap à l'aide du package `leaflet` : 
+### Exemple d'application
+
+Pour vérifier la qualité des fichiers nous effectuons un calage sur un fonds de carte OpenStreetMap à l'aide du package `leaflet` : 
 
 
 ```{r, fig.width=5,fig.cap="Superposition des fonds de carte sur OSM"}
@@ -142,7 +166,14 @@ map
 
 ## Pyramide des âges 2019 
 
-Un dossier du HDX [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. A titre d'exemple, on réalise une AFC sur la pyramide des âges des 77 communes
+### Métadonnées
+
+Un dossier du HDX [accessible ici](https://data.humdata.org/dataset/benin-administrative-level-0-2-sadd-2019-projected-population-statistics) fournit les populations par âge et par sexe en 2019 au niveau des communes, départements ou pays entier. Il s'agit naturellement d'**estimations** mais les données n'en sont pas moins très utile pour toute analyse travaillant sur les situations présentes. Les classes d'âges sont suffisamment détaillées (tranches de 5 ans de 0 à 80 ans) pour procéder à des analyses démographiques intéressantes. 
+
+
+### Exemple d'application
+
+A titre de vérification, on réalise une analyse factorielle des correspondances AFC sur la pyramide des âges des 77 communes
 
 
 ```{r, fig.cap="AFC sur les structures par âge et sexe des communes du Benin en 2019 (Source : OCHA-ROWCA)"}
@@ -402,8 +433,6 @@ Data is available under an Attribution NonCommercial ShareAlike 4.0 Internationa
 https://creativecommons.org/licenses/by nc sa/4.0/
 
 
-### Préparation des données
-
 Les fichiers fournies comportaient de petites erreurs ou des difficultés de formatage rendant compliquée leur importation dans R. Il a donc fallu les corriger un peu avant de les utiliser. Une fois cela effectué, on a vérifié que les données pouvaient se cartographie en effectuant une jointure avec le fichier administratif au niveau communal.  
 
 **N.B.** nous avons retrouvé l'erreur  dans le code de la commune d'Adjara qui est noté *BJ0101* alors que le code exact est *BJ1001*. Nous avons donc reconstruit les fichiers en les harmonisant avec les fonds de carte. 
@@ -411,9 +440,9 @@ Les fichiers fournies comportaient de petites erreurs ou des difficultés de for
 
 
 
-### Variables d'alphabétisation
+### Exemple d'application
 
-Le fichier comporte tout d'abord un ensemble de variables concernant le niveau d'alphabétisation des hommes et des femmes de plus de 6 ans en 2013. Voici à titre indicatif les valeurs par département et pour l'ensemble du pays :  
+Le fichier comporte un ensemble de variables concernant le niveau d'alphabétisation des hommes et des femmes de plus de 6 ans en 2013. Voici à titre indicatif les valeurs par département et pour l'ensemble du pays :  
 
 
 ```{r}
@@ -504,6 +533,8 @@ ggplot(data = dep) + aes(x=100*literacy_male, y = 100*literacy_female, label = A
 
 Les résultats mettent en évidence le fait que l'alphabétisation des femmes au Bénin en 2013 est en moyenne inférieure de 20% à celle des hommes (le paramètre b de la régression est non significatif) et la relation est statistiquement très significative (r2  = 93 \%, p < 0.001). Il existe notamment des résidus c'est-à-dire des départements où la scolarisation des femmes estimée en fonction de celle des hommes est plus forte que prévue (*Alibori, Borgou, Littoral*) ou plus faible que prévue (*Plateau, Couffo, Mono*). 
 
+Le même modèle appliqué au niveau des communes permettrait une analyse plus fine des résultats à travers une carte des résidus. On pourrait aussi imaginer une analyse mutiscalaire croisant les écarts des communes à la moyenne du pays, de leur département et des communes voisines à l'aide du package `mta`. Bref, il s'agit sans nul doute d'un excellent exemple pédagogique pour l'école d'été CIST2022.
+
 
 ## Prix de la nourriture sur les marchés (2002-2021)
 
@@ -514,11 +545,9 @@ Ce fichier qui est accessible sur HDX en suivant [ce lien](https://data.humdata.
 >This no longer updated dataset contains Global Food Prices data from the World Food Programme covering foods such as maize, rice, beans, fish, and sugar for 76 countries and some 1,500 markets. It is updated weekly but contains to a large extent monthly data. The data goes back as far as 1992 for a few countries, although many countries started reporting from 2003 or thereafter.
 
 
-### Préparation des données
-
 Le fichier contenant les coordonnées de latitude et de longitude des marchés, il peut théoriquement être cartographié facilement à l'aide d'un outil de cartographie dynamique tel que `mapview`. Mais il peut aussi faire l'objet de multiples agrégations spatiales, temporelles, par produit. Reste évidemment à en apprécier la qualité ...
 
-Noter qu'il est nécessaire d'éliminer la seconde ligne du tableau sous excel pour pouvoir ensuite charger correctement le fichier. Il est également préférable de lire le fichier avec la fonction *fread()* du package `data.table` faut de quoi on peut avoir des problèmes d'encodage plus ou moins délicats à résoudre. 
+Noter qu'il est nécessaire d'**éliminer la seconde ligne du tableau initial** sous excel pour pouvoir ensuite charger correctement le fichier. Il est également préférable de lire le fichier avec la fonction *fread()* du package `data.table` faut de quoi on peut avoir des problèmes d'encodage plus ou moins délicats à résoudre. 
 
 
 ```{r}
@@ -547,7 +576,7 @@ plot(adm0$geometry,col=NA, border = "black",lwd=2, add=TRUE)
 plot(markets$geometry,col="red", bg="yellow",pch=21,add=TRUE,cex=0.7)
 ```
 
-### Intérêt pédagogique 
+### Exemple d'application
 
 Cette base de données **multidimensionelle** peut servir d'exemple pour de nombreux exercices d'apprentissage de la statistique et de la cartographie sous R. Le prix des produits alimnentaires dépend en effet :
 
@@ -573,7 +602,10 @@ On peut calculer le prix median du riz sur l'ensemble des points de sondage disp
 
 ```{r}
 tab<- riz %>% group_by(when, what) %>% summarize(median_cost=median(cost), nbobs = n())
-ggplot(tab) + aes(x=when,y=median_cost, color=what, size=nbobs) + geom_point() 
+ggplot(tab) + aes(x=when,y=median_cost, color=what, size=nbobs) + geom_point() + 
+  scale_x_continuous("Données de prix mensuelles") + 
+  scale_y_continuous("Prix médian d'un kilog de riz (en $)")+
+  ggtitle(label = "Estimation des prix du riz au Bénin",subtitle = "Source : World Food Program (via HDX)")
 ```
 
 Le graphique montre plusieurs choses :
@@ -586,11 +618,14 @@ Le graphique montre plusieurs choses :
 Effectuons maintenant un zoom sur le priz médian du riz importé en 2020-2021 par régions :
 
 ```{r}
-tab <- riz %>% filter(when >=as.Date("2020-01-01"), what =="Rice (imported)") %>%
+tab <- riz %>% filter(when >=as.Date("2020-04-01"), what =="Rice (imported)") %>%
                group_by(when,where1) %>%
                summarize(median_cost=median(cost))
 ggplot(tab) + aes(x=when,y=where1, fill=median_cost) +geom_tile() + 
-  scale_fill_gradient(low="white", high = "red")
+  scale_fill_gradient(low="white", high = "red")+
+    scale_x_date("Médiane des valeurs observées par mois") + 
+  scale_y_discrete("Département")+
+  ggtitle(label = "Prix du riz importé sur les marchés du Benin ($/kg)",subtitle = "Source : World Food Program (via HDX)")
                         
 
 
@@ -600,14 +635,16 @@ ggplot(tab) + aes(x=when,y=where1, fill=median_cost) +geom_tile() +
 
 
 
-=======
-Le même modèle appliqué au niveau des communes permettrait une analyse plus fine des résultats à travers une carte des résidus. On pourrait aussi imaginer une analyse mutiscalaire croisant les écarts des communes à la moyenne du pays, de leur département et des communes voisines à l'aide du package `mta`. Bref, il s'agit sans nul doute d'un excellent exemple pédagogique pour l'école d'été CIST2022.
+
 
 
 
 ## Villages et localités vers 2015
 
-Un autre dossier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
+
+### Métadonnées 
+
+Ce fichier accessible en [cliquant ici](https://data.humdata.org/dataset/benin-settlements) concerne le peuplement, c'est-à-dire apparemment l'inventaire de toutes les localisations avec leur nom et leur position en latitude longitude. Il comporte 6306 entrées. Les fichiers sont datés de 2015. 
 
 ```{r, fig.width=5,fig.cap="Village et peuplement au Benin vers 2015 (Source : OCHA-ROWCA)"}
 loc<-st_read("data/settlement/ben_plp_NGA.shp", quiet = TRUE)
@@ -616,6 +653,9 @@ plot(adm2$geometry,col="lightyellow", border = "gray20",lwd=0.5)
 plot(loc$geometry,col="red",pch=16,cex=0.2, add=T)
 
 ```
+
+
+### Exemple d'application
 
 A titre de vérification de la précision, nous effectuons une superposition sur le fonds de carte OpenStreetMap pour la commune de Ouidah (code BJ0304 ou BEN003004) ou aura lieu l'école d'été du CIST. En cliquant sur les points onpeut comparer leur nom avec celui des localités indiquées par OSM.
 
@@ -641,6 +681,424 @@ map
 ```
 
 Il y a à l'évidence des décalages ... Et le contour de la commune lui-même ne semble pas coller exactement avec celui fourni par OSM. Il faudra vérifier laquelle des deux sources est erronée (à moins que ce ne soient les deux ?). Toutefois, la localisation semble rester approximativement juste ...
+
+
+# DONNEES INTERNATIONALES
+
+Nous allons présenter ici deux packages R qui correspondent à des API permettant de télécharger respectivement des données statistiques de la Banque Mondiale et des fonds de carte Natural Earth. Chacune de ces API a été implémentée sous le forme de package R ce qui permet d'extraire facilement les données, dès lors qu'on dispose d'une connexion internet suffisante. Un intérêt évident de cette approche par API est de pouvoir effectuer facilement des requêtes sur n'importe quelle partie du monde et de pouvoir mettra à jour régulièrement les données au fur et à mesure de leur mise à jour. 
+
+A titre d'exemple, nous allons montrer comment réaliser une carte des émissions de CO2 par habitant des pays de la CEDEAO en 2018. 
+
+
+## L'API Banque Mondiale 
+
+Supposons que l'on souhaite télécharger la population, le PIB et les émisssions de CO2 des pays du monde de 2000 à 2015. Plutôt que d'aller chercher des fichiers sur un site web, nous allons utiliser une API proposée par la Banque Mondiale qui permet de télécharger les données facilement et surtout de les mettre à jour régulièrement. Pour cela on va installer le package R correspondant à l'API `wbstats` de la Banque mondiale.
+
+https://cran.r-project.org/web/packages/wbstats/vignettes/Using_the_wbstats_package.html
+
+
+
+Au moment du chargement du package, il est créé un fichier wb_cachelist qui fournit l'ensemble des donnes disponibles sous la forme d'une liste de tableaux de méta-données.
+
+
+
+
+```{r}
+library("wbstats")
+cat<-wb_cachelist
+str(cat,max.level = 1)
+```
+
+
+### Le tableau "countries"
+
+Il fournit des renseignements de base sur les différents pays, leurs codes, etc.
+
+```{r}
+str(cat$countries)
+```
+
+Le tableau comporte 304 observation et il mélange des pays (France), des fragments de pays (Réunion) et des agrégats de pays (Europe). Il faudra donc bien faire attention lors de l'extraction à réfléchir à ce que l'on souhaite utiliser. Par exemple, si l'on veut juste les pays :
+
+```{r}
+## Programme en langage R_base
+# pays<-cat$countries[cat$countries$income_level!="Aggregates",c("iso3c", "country","capital_city","longitude","latitude", "region","income_level")]
+
+
+## Programme en langage dplyr
+
+pays <- cat$countries %>% 
+          filter(income_level !="Aggregates") %>%
+          select(iso3c,country, capital_city, latitude, longitude, region, income_level)
+
+
+kable(head(pays))
+
+```
+
+### Le tableau indicators
+
+Il comporte pas loin de 17000 variables ... Autant dire qu'il est difficile de l'explorer facilement si l'on ne sait pas ce que l'on cherche. 
+
+```{r}
+indic<-cat$indicators
+dim(indic)
+kable(head(indic))
+```
+#### Recherche du code d'un indicateur
+
+Supposons qu'on recherche les données récentes sur les émissions de CO2. On va utiliser le mot-clé *CO2* pour rechercher les variables correspondantes dans le catalogue à l'aide de la fonction `wbsearch`, ce qui donne 45 réponses 
+
+```{r}
+vars <- wbsearch(pattern = "CO2",fields="indicator")
+kable(head(vars))
+```
+
+On va finalement trouver le code de la variable recherchée
+
+- *EN.ATM.CO2E.KT* : émissions de CO2 en kilotonnes
+
+Les deux autres variables dont nous avons besoin ont pour code 
+
+- *NY.GDP.MKTP.CD* : PIB en parités de pouvoir d'achat
+- *SP.POP.TOTL* : Population totale
+
+
+#### Extraction des métadonnées 
+
+Une fois que l'on pense connaître le code de nos variables, on peut extraire les métadonnés pour vérifier qu'il s'agit bien de ce que l'on cherche, quelle est la source exacte, quelle est l'unité de mesure ...
+
+```{r}
+# Programme R-base
+meta<-cat$indicators[cat$indicators$indicator_id %in% c("SP.POP.TOTL","NY.GDP.MKTP.CD","EN.ATM.CO2E.KT"),]
+
+# Programme dplyr
+meta<-cat$indicators %>%
+        filter(indicator_id %in% c("SP.POP.TOTL","NY.GDP.MKTP.CD","EN.ATM.CO2E.KT"))
+
+kable(meta)
+```
+
+
+### L'extraction des données
+
+Elle se fait à l'aide de la fonction `wb_data` qui comporte de nombreuses options. 
+
+
+
+#### le paramètre `indicator = `
+
+Ce paramètre permet de choisir les indicateurs à collecter, ce qui suppose que l'on connaisse leur code. Par exemple, supposons que l'on veuille extraire la population et le PIB pour pouvoir calculer ensuite le PIB par habitant
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL", "EN.ATM.CO2E.KT"))
+dim(df)
+kable(head(df,6))
+
+```
+
+- **commentaire** : Nous obtenons un tableau très grand (> 13000 lignes) qui comporte les valeurs pour toutes les dates disponibles depuis 1960 et pour tous les pays, même si les valeurs sont souvent manquantes. 
+
+
+### le choix d'une période de temps
+
+#### les paramètres `startdate = ` et `startdate = ` 
+
+Ces deux paramètres permettent de choisir une plage de temps. On peut par exemple décider de ne collecter que les données relatives aux années 2017, 2018 et 2019 
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL", "EN.ATM.CO2E.KT"),
+                start_date = 2017,
+                end_date = 2019)
+dim(df)
+kable(head(df,6))
+
+```
+
+- **commentaire** : Le tableau ne comporte donc plus que 651 lignes correspondant aux trois dates pour les différents pays du Monde. 
+
+
+#### Le paramètre `mrv` (most recent value)
+
+Lorsque l'on souhaite juste obtenir les données les plus récentes, on peut remplacer les paramètres `startdate = ` et `startdate = `  par le paramètre `mrv = ` suivit d'un chiffre indiquant le nombre d'années que l'on souhaite à partir de la date la plus récente. Avec mrv=1 on récupère uniquement la dernière année disponible pour au moins l'une des variables.
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
+                mrv = 1)
+dim(df)
+kable(head(df,6))
+```
+
+L'inconvénient de cette méthode est que cela peut aboutir à un grand nombre de valeurs manquantes si l'une des variables recherchée n'a pas été mise à jour. 
+Il est donc préférable de sélectioner une période plus longue mrv=5 et de faire ensuite soi-même le tri
+
+### Le choix des unités géographiques
+
+
+
+Le paramètre `country = ` permet de choisir les entités spatiales à collecter, soit sous forme de liste de codes, soit à l'aide de valeurs spéciales. Par défaut; il renvoie la liste de tous les pays, mais on peut se limiter à quelques uns seulement à l'aide de leur nom en anglais (risqué ...) ou de leur code ISO3 (plus sûr)
+
+#### sélection de pays
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
+                start_date = 2018,
+                end_date = 2018,
+                country = c("BEN","TGO"))
+df$GDP.per.capita <- round(df$NY.GDP.MKTP.CD / df$SP.POP.TOTL,0)
+df$CO2.per.capita <- round(1000*df$EN.ATM.CO2E.KT / df$SP.POP.TOTL,2)
+kable(head(df,6))
+```
+
+- **commentaire** : Il est donc facile de travailler sur un petit nombre de pays que l'on souhaite comparer.
+
+#### Opérateurs spéciaux
+
+Il existe un certain nombre de paramètres spéciaux que l'on peut utiliser à la place de la liste des pays :
+
+- "countries_only" (Default)
+- "regions_only"
+- "admin_regions_only"
+- "income_levels_only"
+- "aggregates_only"
+- "all"
+
+
+
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
+                start_date = 2018,
+                end_date = 2018,
+                country = "regions_only")
+df$GDP.per.capita <- round(df$NY.GDP.MKTP.CD / df$SP.POP.TOTL,0)
+df$CO2.per.capita <- round(1000*df$EN.ATM.CO2E.KT / df$SP.POP.TOTL,2)
+kable(df)
+```
+
+- **commentaire** : Nous avons extrait les données par grandes régions du Monde pour l'année 2018
+
+### Le format de sortie du tableau
+
+Il existe deux façons d'extraire un tableau comprenant plusieurs variables ou plusieurs dates, selon que l'on veut un tableau large (wide) ou étroit. On peut régler la sortie à l'aide du paramètre `return_wide` qui est TRUE par défaut mais que l'on peut régler sur FALSE.
+
+#### `return_wide` = FALSE
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
+                return_wide = TRUE,
+                start_date = 2017,
+                end_date = 2018,
+                country = c("BEN","TGO"))
+df
+```
+
+#### `return_wide` = FALSE
+
+```{r}
+df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
+                return_wide = FALSE,
+                start_date = 2017,
+                end_date = 2018,
+                country = c("BEN","TGO"))
+df[,1:7]
+```
+
+
+## L'API Natural Earth
+
+
+###  Natural Earth
+
+Nous allons ici utiliser le fonds de carte *Natural Earth* qui est un fonds de carte libre de droit et mis à jour régulièrement. Le site web du projet se situe à l'adresse suivante :
+
+https://www.naturalearthdata.com/
+
+Il indique ses objectifs comme suit : 
+
+> "Natural Earth is a public domain map dataset available at 1:10m, 1:50m, and 1:110 million scales. Featuring tightly integrated vector and raster data, with Natural Earth you can make a variety of visually pleasing, well-crafted maps with cartography or GIS software.[...] Natural Earth was built through a collaboration of many volunteers and is supported by NACIS (North American Cartographic Information Society), and is free for use in any type of project (see our Terms of Use page for more information)."
+
+On peut télécharger les différents fonds de carte sur le site web, mais dans une perspective de mise à jour automatique régulière du fonds de carte il est plus pertinent d'utiliser l'API `rnaturalearth`qui permet d'accéder directement à la plupart des fonds de carte avec juste quelques lignes de code. Il suffit pour cela de commencer par installer et charger le package.
+
+```{r}
+library("rnaturalearth")
+library("rnaturalearthdata")
+```
+
+
+
+### le fonds de carte *countries110* (175 unités)
+
+On va télécharger tout d'abord le fonds de carte des pays du Monde avec une forte généralisation des contours `countries110` et le transformer en objet de type spatial feature du package  `sf` du package avant de le visualiser et d' examiner le nombre d'unités 
+
+
+```{r}
+map<-st_as_sf(countries110)
+class(map)
+
+ggplot(data = map) +
+        geom_sf(fill="lightyellow") +
+        theme_bw()
+
+
+```
+
+Ce fonds de carte comporte 175 unités spatiales, mais de quoi s'agit-il exactement. Les métadonnées associées permettent de se faire une idée plus précise de la nature exacte de ces unités. Prenons pour cela quelques exempes
+
+```{r}
+sel<-map[map$adm0_a3 %in% c("FRA", "NCL","ATA","ATF","USA", "PRI","CHN","TWN","MAR", "SAH","CHN","TWN","ISR","PSX"),c("sovereignt","sov_a3","type","admin", "adm0_a3","name","note_adm0","iso_a3","wb_a3")]
+kable(sel)
+```
+
+Les exemples présentés dans le tableau ci-dessus montrent la complexité du problème de définition et de représentation cartographique des "pays" ou "bouts du monde". Quelques remarques :
+
+1. La *France* (FR1) en tant qu'état souverain regroupe ici cartographiquement la partie métropolitaine du pays et les Départements d'Outre-Mer (Guyane Française, Réunion, Martinique, Guadeloupe) en une seule entité spatiale, mais elle met à part la Nouvelle Calédonie et les îles antarctiques. 
+2. *Porto Rico* (PRI) est considéré comme une dépendance des *Etats-Unis* (US1) au même titre que la *Nouvelle Calédonie*(NCL) est considérée comme une dépendance de la *France* (FR1).
+3. Le *Sahara occidental* (SAH) est considéré comme une zone *indéterminée* bien qu'il soit occupé par le *Maroc* (MAR).
+4. la Palestine (PSX) est considéré comme une zone *disputée* mais rattachée en terme de souveraineté à *Israël* (ISR) et une note précise qu'elle est *partiellement semi-administrée*. Le code sur trois caractères des territoires palestiniens est très variable selon les organisations (PSX, PSE, WBG).
+5. *Taïwan* (TWN) est présenté comme un état souverain, mais son code ISO3 est manquant pour la banque mondiale car la Chine refuse de le reconnaître. 
+6. Plusieurs états souverains de petite taille sont absents de ce fonds de carte qui ne regroupe que 175 unités soit moins que les 193 pays membres des Nations-Unies. La plupart des îles du Pacifique sont en particulier éliminées car leur surface les rendrait invisible pour le degré de généralisation cartographique adopté. 
+
+
+###  le fonds de carte *sovereignty110* (171 unités)
+
+On peut obtenir un fonds différent en installant le package complémentaire `rnaturalearthdata` qui permet notamment de distinguer le fonds de carte des *countries* (c'est-à-dire des "bouts du monde" souverains ou non) et des *sovereignty* (c'est-à-dire des états souverains)
+
+```{r}
+library(rnaturalearthdata)
+map<-st_as_sf(sovereignty110)
+
+ggplot(data = map) +
+ geom_sf(fill="lightyellow") +  
+  theme_bw()
+
+```
+
+Le fonds de carte permet désormais de récupérer la plupart des pays souverains du Monde, y compris les petits états insulaires du Pacifique, mais il fait disparaître de façon sélective les territoires indéterminés ou disputés. Ainsi, le Sahra Occidental demeure partiellement séparé du Maroc mais les territoires palestiniens sont annexés à Israël ainsi que le plateau du Golan ce qui n'est évidemment pas un choix neutred'un point de vue géoolitique.
+
+```{r}
+par(mfrow=c(1,2))
+
+map2<-map %>% filter(sov_a3 %in% c("ISR","JOR","SYR","LBN","EGY"))
+ggplot(data = map2) +
+    geom_sf(fill=c("gray80","orange","gray80","gray80","gray80")) +
+    ggtitle("Limits of Israël") +
+  theme_minimal()
+
+
+map3<-map %>% filter(sov_a3 %in%c("MAR","SAH","DZA","MRT"))
+ggplot(data = map3) +
+    geom_sf(fill=c("gray70","orange","gray70","lightyellow")) +
+    ggtitle("Limits of Morocco") +
+  theme_minimal()
+
+
+
+
+```
+
+
+
+### Le fonds de carte *countries50* 
+
+On peut également choisir un fonds moins généralisé dans lequel tous les petits pays seront présents
+
+```{r}
+
+map<-st_as_sf(countries50)
+ggplot(data = map) +
+    geom_sf(fill="lightyellow") +
+  theme_bw()
+
+```
+
+Il existe toute une série d'autres fonds de carte dans le package Natural Earth, notamment avec des résolutions plus précises, mais on se limitera ici à l'exploration des fonds de carte utile pour produire des cartes à contour généralisé couvrant le monde entier.
+
+
+## Exemple d'application
+
+Nous allons essayer de constituer une carte des émissions de CO2 par habitant des pays de la CEDEAO en 2018 basée sur la combinaison des données `wbstats` et du fonds de carte `naturalearth`.
+
+### Etape 1 : récupération des données statistiques
+
+
+Nous commençons par récupérer les données brutes de population et de CO2 en 2018 pour les pays de la CEDEAO et on y ajoute les latitues et longitues des centres des pays.
+
+```{r}
+cedeao<-c("BEN","BFA","CPV","CIV", "GMB","GIN","GNB","GHA","LBR","MLI","NER","NGA","SEN","SLE","TGO")
+df   <- wb_data(indicator  = c("SP.POP.TOTL", "EN.ATM.CO2E.KT"),
+                return_wide = TRUE,
+                start_date = 2018,
+                end_date = 2018,
+                country = cedeao)
+kable(df)
+
+```
+
+Nous renommons les variables pour avoir un tableau plus simple ou la population est en millions d'habitants, les émissions de CO2 en millions de tonnes. On y ajoute l'intensité des émissions en tonnes par habitant.
+
+
+
+```{r}
+
+don <-df %>% select(ISO3 = iso3c, NOM = country, POP = SP.POP.TOTL, CO2 = EN.ATM.CO2E.KT) %>%
+            mutate(POP = POP/1000000, CO2 = CO2/1000, CO2_hab = CO2/POP)
+kable(don,digits = 2)
+
+```
+
+
+
+
+
+### Etape 2 : Récupération du fonds de carte
+
+on récupère ensuite le fonds de carte en ne gardant que les pays de la CEDEAO
+
+```{r}
+cedeao<-c("BEN","BFA","CPV","CIV", "GMB","GIN","GNB","GHA","LBR","MLI","NER","NGA","SEN","SLE","TGO")
+map<-st_as_sf(countries110)
+map<-st_as_sf(countries110) %>% 
+        select(adm0_a3,geometry) %>% 
+        rename(ISO3 = adm0_a3) %>%
+        filter(ISO3 %in% cedeao)
+plot(map$geometry, col="lightyellow")
+```
+
+
+
+### Etape 3 : Jointure du fonds de carte et des statistiques
+
+```{r}
+mapdon <- right_join(don,map) %>% st_as_sf()
+kable(head(mapdon))
+```
+
+### Etape 4 : Visualisation avec mapsf
+
+
+```{r}
+
+mf_theme("agolalight")
+mapdon %>% 
+  mf_map("CO2_hab", 
+         "choro",
+         breaks="jenks",
+         leg_pos="bottomleft",
+         leg_title = "en tonnes/hab.")%>%
+  mf_map("CO2", 
+         "prop",
+         col="red",
+         leg_pos = "topleft",
+         leg_title = "en tonnes")
+mf_title("Emissions de CO2 des pays de la CEDEAO en 2018")
+
+```
+
+
+
+
+
 
 
 
