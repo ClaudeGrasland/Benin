@@ -59,10 +59,12 @@ opts_chunk$set(echo=FALSE,
 
 # DONNEES INTERNATIONALES
 
+Nous allons présenter ici deux packages R qui correspondent à des API permettant de télécharger respectivement des données statistiques de la Banque Mondiale et des fonds de carte Natural Earth. Chacune de ces API a été implémentée sous le forme de package R ce qui permet d'extraire facilement les données, dès lors qu'on dispose d'une connexion internet suffisante. Un intérêt évident de cette approche par API est de pouvoir effectuer facilement des requêtes sur n'importe quelle partie du monde et de pouvoir mettra à jour régulièrement les données au fur et à mesure de leur mise à jour. 
+
+A titre d'exemple, nous allons montrer comment réaliser une carte des émissions de CO2 par habitant des pays de la CEDEAO en 2018. 
 
 
-
-## Banque Mondiale
+## L'API Banque Mondiale 
 
 Supposons que l'on souhaite télécharger la population, le PIB et les émisssions de CO2 des pays du monde de 2000 à 2015. Plutôt que d'aller chercher des fichiers sur un site web, nous allons utiliser une API proposée par la Banque Mondiale qui permet de télécharger les données facilement et surtout de les mettre à jour régulièrement. Pour cela on va installer le package R correspondant à l'API `wbstats` de la Banque mondiale.
 
@@ -277,7 +279,7 @@ df[,1:7]
 ```
 
 
-## Fonds de carte
+## L'API Natural Earth
 
 
 ###  Natural Earth
@@ -467,8 +469,6 @@ mapdon %>%
 mf_title("Emissions de CO2 des pays de la CEDEAO en 2018")
 
 ```
-
-
 
 
 

@@ -7,8 +7,8 @@ author:
    affiliation: Université de Paris (Diderot), UMR 8504 Géographie-cités, FR 2007 CIST
  - name: Hugues Pecout
    affiliation : FR 2007 CIST
-image: "data/figures/HDX.png"   
-logo: "data/figures/HDX.png"  
+image: "data/figures/logoEE.png"   
+logo: "data/figures/logoEE.png"  
 output:
   rzine::readrzine:
     highlight: kate
@@ -48,7 +48,7 @@ library(rnaturalearthdata)
 
 ## Global options
 options(max.print="75")
-opts_chunk$set(echo=FALSE,
+opts_chunk$set(echo=TRUE,
 	             cache=FALSE,
                prompt=FALSE,
                tidy=FALSE,
@@ -790,10 +790,9 @@ Elle se fait à l'aide de la fonction `wb_data` qui comporte de nombreuses optio
 
 Ce paramètre permet de choisir les indicateurs à collecter, ce qui suppose que l'on connaisse leur code. Par exemple, supposons que l'on veuille extraire la population et le PIB pour pouvoir calculer ensuite le PIB par habitant
 
-```{r}
+```{r, eval=FALSE}
 df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL", "EN.ATM.CO2E.KT"))
-dim(df)
-kable(head(df,6))
+
 
 ```
 
@@ -1090,7 +1089,7 @@ mapdon %>%
          "prop",
          col="red",
          leg_pos = "topleft",
-         leg_title = "en tonnes")
+         leg_title = "en millions de tonnes")
 mf_title("Emissions de CO2 des pays de la CEDEAO en 2018")
 
 ```
