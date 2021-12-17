@@ -41,6 +41,11 @@ library(wbstats)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
+library(quanteda)
+library(tidytext)
+library(plotly)
+library(RColorBrewer)
+
 
 ## Global options
 options(max.print="75")
@@ -57,367 +62,84 @@ opts_chunk$set(echo=FALSE,
 # opts_knit$set(width=75)
 ```
 
-# DONNEES INTERNATIONALES
 
-Nous allons présenter ici deux packages R qui correspondent à des API permettant de télécharger respectivement des données statistiques de la Banque Mondiale et des fonds de carte Natural Earth. Chacune de ces API a été implémentée sous le forme de package R ce qui permet d'extraire facilement les données, dès lors qu'on dispose d'une connexion internet suffisante. Un intérêt évident de cette approche par API est de pouvoir effectuer facilement des requêtes sur n'importe quelle partie du monde et de pouvoir mettra à jour régulièrement les données au fur et à mesure de leur mise à jour. 
-
-A titre d'exemple, nous allons montrer comment réaliser une carte des émissions de CO2 par habitant des pays de la CEDEAO en 2018. 
-
-
-## L'API Banque Mondiale 
-
-Supposons que l'on souhaite télécharger la population, le PIB et les émisssions de CO2 des pays du monde de 2000 à 2015. Plutôt que d'aller chercher des fichiers sur un site web, nous allons utiliser une API proposée par la Banque Mondiale qui permet de télécharger les données facilement et surtout de les mettre à jour régulièrement. Pour cela on va installer le package R correspondant à l'API `wbstats` de la Banque mondiale.
-
-https://cran.r-project.org/web/packages/wbstats/vignettes/Using_the_wbstats_package.html
+# DONNEES GEOMEDIATIQUES
 
 
 
-Au moment du chargement du package, il est créé un fichier wb_cachelist qui fournit l'ensemble des donnes disponibles sous la forme d'une liste de tableaux de méta-données.
+## préparation des données
 
 
+### Importation du fichier csv
+
+```{r loadcsv, echo=TRUE}
+store <- "data/mediacloud"
+media <- "fr_BEN_tribun"
+type <-".csv"
+
+fic <- paste(store,"/",media,type,sep="")
+
+df<-read.csv(fic,
+             sep=";",
+             header=T,
+             encoding = "UTF-8",
+             stringsAsFactors = F)
+
+# eliminate duplicate
+df<-df[duplicated(df$title)==F,]
 
 
-```{r}
-library("wbstats")
-cat<-wb_cachelist
-str(cat,max.level = 1)
+kable(head(df))
 ```
+### Resolution of encoding problems
 
-
-### Le tableau "countries"
-
-Il fournit des renseignements de base sur les différents pays, leurs codes, etc.
+It is sometime possible to adapt manually the encoding problem whan they are not too much as in present example. 
 
 ```{r}
-str(cat$countries)
-```
-
-Le tableau comporte 304 observation et il mélange des pays (France), des fragments de pays (Réunion) et des agrégats de pays (Europe). Il faudra donc bien faire attention lors de l'extraction à réfléchir à ce que l'on souhaite utiliser. Par exemple, si l'on veut juste les pays :
-
-```{r}
-## Programme en langage R_base
-# pays<-cat$countries[cat$countries$income_level!="Aggregates",c("iso3c", "country","capital_city","longitude","latitude", "region","income_level")]
-
-
-## Programme en langage dplyr
-
-pays <- cat$countries %>% 
-          filter(income_level !="Aggregates") %>%
-          select(iso3c,country, capital_city, latitude, longitude, region, income_level)
-
-
-kable(head(pays))
-
-```
-
-### Le tableau indicators
-
-Il comporte pas loin de 17000 variables ... Autant dire qu'il est difficile de l'explorer facilement si l'on ne sait pas ce que l'on cherche. 
-
-```{r}
-indic<-cat$indicators
-dim(indic)
-kable(head(indic))
-```
-#### Recherche du code d'un indicateur
-
-Supposons qu'on recherche les données récentes sur les émissions de CO2. On va utiliser le mot-clé *CO2* pour rechercher les variables correspondantes dans le catalogue à l'aide de la fonction `wbsearch`, ce qui donne 45 réponses 
-
-```{r}
-vars <- wbsearch(pattern = "CO2",fields="indicator")
-kable(head(vars))
-```
-
-On va finalement trouver le code de la variable recherchée
-
-- *EN.ATM.CO2E.KT* : émissions de CO2 en kilotonnes
-
-Les deux autres variables dont nous avons besoin ont pour code 
-
-- *NY.GDP.MKTP.CD* : PIB en parités de pouvoir d'achat
-- *SP.POP.TOTL* : Population totale
-
-
-#### Extraction des métadonnées 
-
-Une fois que l'on pense connaître le code de nos variables, on peut extraire les métadonnés pour vérifier qu'il s'agit bien de ce que l'on cherche, quelle est la source exacte, quelle est l'unité de mesure ...
-
-```{r}
-# Programme R-base
-meta<-cat$indicators[cat$indicators$indicator_id %in% c("SP.POP.TOTL","NY.GDP.MKTP.CD","EN.ATM.CO2E.KT"),]
-
-# Programme dplyr
-meta<-cat$indicators %>%
-        filter(indicator_id %in% c("SP.POP.TOTL","NY.GDP.MKTP.CD","EN.ATM.CO2E.KT"))
-
-kable(meta)
-```
-
-
-### L'extraction des données
-
-Elle se fait à l'aide de la fonction `wb_data` qui comporte de nombreuses options. 
-
-
-
-#### le paramètre `indicator = `
-
-Ce paramètre permet de choisir les indicateurs à collecter, ce qui suppose que l'on connaisse leur code. Par exemple, supposons que l'on veuille extraire la population et le PIB pour pouvoir calculer ensuite le PIB par habitant
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL", "EN.ATM.CO2E.KT"))
-dim(df)
-kable(head(df,6))
-
-```
-
-- **commentaire** : Nous obtenons un tableau très grand (> 13000 lignes) qui comporte les valeurs pour toutes les dates disponibles depuis 1960 et pour tous les pays, même si les valeurs sont souvent manquantes. 
-
-
-### le choix d'une période de temps
-
-#### les paramètres `startdate = ` et `startdate = ` 
-
-Ces deux paramètres permettent de choisir une plage de temps. On peut par exemple décider de ne collecter que les données relatives aux années 2017, 2018 et 2019 
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL", "EN.ATM.CO2E.KT"),
-                start_date = 2017,
-                end_date = 2019)
-dim(df)
-kable(head(df,6))
-
-```
-
-- **commentaire** : Le tableau ne comporte donc plus que 651 lignes correspondant aux trois dates pour les différents pays du Monde. 
-
-
-#### Le paramètre `mrv` (most recent value)
-
-Lorsque l'on souhaite juste obtenir les données les plus récentes, on peut remplacer les paramètres `startdate = ` et `startdate = `  par le paramètre `mrv = ` suivit d'un chiffre indiquant le nombre d'années que l'on souhaite à partir de la date la plus récente. Avec mrv=1 on récupère uniquement la dernière année disponible pour au moins l'une des variables.
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
-                mrv = 1)
-dim(df)
-kable(head(df,6))
-```
-
-L'inconvénient de cette méthode est que cela peut aboutir à un grand nombre de valeurs manquantes si l'une des variables recherchée n'a pas été mise à jour. 
-Il est donc préférable de sélectioner une période plus longue mrv=5 et de faire ensuite soi-même le tri
-
-### Le choix des unités géographiques
-
-
-
-Le paramètre `country = ` permet de choisir les entités spatiales à collecter, soit sous forme de liste de codes, soit à l'aide de valeurs spéciales. Par défaut; il renvoie la liste de tous les pays, mais on peut se limiter à quelques uns seulement à l'aide de leur nom en anglais (risqué ...) ou de leur code ISO3 (plus sûr)
-
-#### sélection de pays
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
-                start_date = 2018,
-                end_date = 2018,
-                country = c("BEN","TGO"))
-df$GDP.per.capita <- round(df$NY.GDP.MKTP.CD / df$SP.POP.TOTL,0)
-df$CO2.per.capita <- round(1000*df$EN.ATM.CO2E.KT / df$SP.POP.TOTL,2)
-kable(head(df,6))
-```
-
-- **commentaire** : Il est donc facile de travailler sur un petit nombre de pays que l'on souhaite comparer.
-
-#### Opérateurs spéciaux
-
-Il existe un certain nombre de paramètres spéciaux que l'on peut utiliser à la place de la liste des pays :
-
-- "countries_only" (Default)
-- "regions_only"
-- "admin_regions_only"
-- "income_levels_only"
-- "aggregates_only"
-- "all"
-
-
-
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
-                start_date = 2018,
-                end_date = 2018,
-                country = "regions_only")
-df$GDP.per.capita <- round(df$NY.GDP.MKTP.CD / df$SP.POP.TOTL,0)
-df$CO2.per.capita <- round(1000*df$EN.ATM.CO2E.KT / df$SP.POP.TOTL,2)
-kable(df)
-```
-
-- **commentaire** : Nous avons extrait les données par grandes régions du Monde pour l'année 2018
-
-### Le format de sortie du tableau
-
-Il existe deux façons d'extraire un tableau comprenant plusieurs variables ou plusieurs dates, selon que l'on veut un tableau large (wide) ou étroit. On peut régler la sortie à l'aide du paramètre `return_wide` qui est TRUE par défaut mais que l'on peut régler sur FALSE.
-
-#### `return_wide` = FALSE
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
-                return_wide = TRUE,
-                start_date = 2017,
-                end_date = 2018,
-                country = c("BEN","TGO"))
-df
-```
-
-#### `return_wide` = FALSE
-
-```{r}
-df   <- wb_data(indicator  = c("NY.GDP.MKTP.CD","SP.POP.TOTL","EN.ATM.CO2E.KT"),
-                return_wide = FALSE,
-                start_date = 2017,
-                end_date = 2018,
-                country = c("BEN","TGO"))
-df[,1:7]
-```
-
-
-## L'API Natural Earth
-
-
-###  Natural Earth
-
-Nous allons ici utiliser le fonds de carte *Natural Earth* qui est un fonds de carte libre de droit et mis à jour régulièrement. Le site web du projet se situe à l'adresse suivante :
-
-https://www.naturalearthdata.com/
-
-Il indique ses objectifs comme suit : 
-
-> "Natural Earth is a public domain map dataset available at 1:10m, 1:50m, and 1:110 million scales. Featuring tightly integrated vector and raster data, with Natural Earth you can make a variety of visually pleasing, well-crafted maps with cartography or GIS software.[...] Natural Earth was built through a collaboration of many volunteers and is supported by NACIS (North American Cartographic Information Society), and is free for use in any type of project (see our Terms of Use page for more information)."
-
-On peut télécharger les différents fonds de carte sur le site web, mais dans une perspective de mise à jour automatique régulière du fonds de carte il est plus pertinent d'utiliser l'API `rnaturalearth`qui permet d'accéder directement à la plupart des fonds de carte avec juste quelques lignes de code. Il suffit pour cela de commencer par installer et charger le package.
-
-```{r}
-library("rnaturalearth")
-library("rnaturalearthdata")
-```
-
-
-
-### le fonds de carte *countries110* (175 unités)
-
-On va télécharger tout d'abord le fonds de carte des pays du Monde avec une forte généralisation des contours `countries110` et le transformer en objet de type spatial feature du package  `sf` du package avant de le visualiser et d' examiner le nombre d'unités 
-
-
-```{r}
-map<-st_as_sf(countries110)
-class(map)
-
-ggplot(data = map) +
-        geom_sf(fill="lightyellow") +
-        theme_bw()
-
-
-```
-
-Ce fonds de carte comporte 175 unités spatiales, mais de quoi s'agit-il exactement. Les métadonnées associées permettent de se faire une idée plus précise de la nature exacte de ces unités. Prenons pour cela quelques exempes
-
-```{r}
-sel<-map[map$adm0_a3 %in% c("FRA", "NCL","ATA","ATF","USA", "PRI","CHN","TWN","MAR", "SAH","CHN","TWN","ISR","PSX"),c("sovereignt","sov_a3","type","admin", "adm0_a3","name","note_adm0","iso_a3","wb_a3")]
-kable(sel)
-```
-
-Les exemples présentés dans le tableau ci-dessus montrent la complexité du problème de définition et de représentation cartographique des "pays" ou "bouts du monde". Quelques remarques :
-
-1. La *France* (FR1) en tant qu'état souverain regroupe ici cartographiquement la partie métropolitaine du pays et les Départements d'Outre-Mer (Guyane Française, Réunion, Martinique, Guadeloupe) en une seule entité spatiale, mais elle met à part la Nouvelle Calédonie et les îles antarctiques. 
-2. *Porto Rico* (PRI) est considéré comme une dépendance des *Etats-Unis* (US1) au même titre que la *Nouvelle Calédonie*(NCL) est considérée comme une dépendance de la *France* (FR1).
-3. Le *Sahara occidental* (SAH) est considéré comme une zone *indéterminée* bien qu'il soit occupé par le *Maroc* (MAR).
-4. la Palestine (PSX) est considéré comme une zone *disputée* mais rattachée en terme de souveraineté à *Israël* (ISR) et une note précise qu'elle est *partiellement semi-administrée*. Le code sur trois caractères des territoires palestiniens est très variable selon les organisations (PSX, PSE, WBG).
-5. *Taïwan* (TWN) est présenté comme un état souverain, mais son code ISO3 est manquant pour la banque mondiale car la Chine refuse de le reconnaître. 
-6. Plusieurs états souverains de petite taille sont absents de ce fonds de carte qui ne regroupe que 175 unités soit moins que les 193 pays membres des Nations-Unies. La plupart des îles du Pacifique sont en particulier éliminées car leur surface les rendrait invisible pour le degré de généralisation cartographique adopté. 
-
-
-###  le fonds de carte *sovereignty110* (171 unités)
-
-On peut obtenir un fonds différent en installant le package complémentaire `rnaturalearthdata` qui permet notamment de distinguer le fonds de carte des *countries* (c'est-à-dire des "bouts du monde" souverains ou non) et des *sovereignty* (c'est-à-dire des états souverains)
-
-```{r}
-library(rnaturalearthdata)
-map<-st_as_sf(sovereignty110)
-
-ggplot(data = map) +
- geom_sf(fill="lightyellow") +  
-  theme_bw()
-
-```
-
-Le fonds de carte permet désormais de récupérer la plupart des pays souverains du Monde, y compris les petits états insulaires du Pacifique, mais il fait disparaître de façon sélective les territoires indéterminés ou disputés. Ainsi, le Sahra Occidental demeure partiellement séparé du Maroc mais les territoires palestiniens sont annexés à Israël ainsi que le plateau du Golan ce qui n'est évidemment pas un choix neutred'un point de vue géoolitique.
-
-```{r}
-par(mfrow=c(1,2))
-
-map2<-map %>% filter(sov_a3 %in% c("ISR","JOR","SYR","LBN","EGY"))
-ggplot(data = map2) +
-    geom_sf(fill=c("gray80","orange","gray80","gray80","gray80")) +
-    ggtitle("Limits of Israël") +
-  theme_minimal()
-
-
-map3<-map %>% filter(sov_a3 %in%c("MAR","SAH","DZA","MRT"))
-ggplot(data = map3) +
-    geom_sf(fill=c("gray70","orange","gray70","lightyellow")) +
-    ggtitle("Limits of Morocco") +
-  theme_minimal()
-
-
-
+df$text<-df$title
+# standardize apostrophe
+df$text<-gsub("&#8217;","'",df$text)
+
+# standardize punct
+df$text<-gsub('&#8230;','.',df$text)
+
+# standardize hyphens
+df$text<-gsub('&#8211;','-',df$text)
+
+# Remove quotation marks
+df$text<-gsub('&#171;&#160;','',df$text)
+df$text<-gsub('&#160;&#187;','',df$text)
+df$text<-gsub('&#8220;','',df$text)
+df$text<-gsub('&#8221;','',df$text)
+df$text<-gsub('&#8216;','',df$text)
+df$text<-gsub('&#8243;','',df$text)
 
 ```
 
 
+### Transformation in quanteda format
 
-### Le fonds de carte *countries50* 
+We propose  a storage based on `quanteda` format by just transforming the data that has been produced by readtext. We keep only the name of the source and the date of publication. 
 
-On peut également choisir un fonds moins généralisé dans lequel tous les petits pays seront présents
+```{r create quanteda, echo=T}
 
-```{r}
-
-map<-st_as_sf(countries50)
-ggplot(data = map) +
-    geom_sf(fill="lightyellow") +
-  theme_bw()
-
-```
-
-Il existe toute une série d'autres fonds de carte dans le package Natural Earth, notamment avec des résolutions plus précises, mais on se limitera ici à l'exploration des fonds de carte utile pour produire des cartes à contour généralisé couvrant le monde entier.
+# Create Quanteda corpus
+qd<-corpus(df,docid_field = "stories_id")
 
 
-## Exemple d'application
-
-Nous allons essayer de constituer une carte des émissions de CO2 par habitant des pays de la CEDEAO en 2018 basée sur la combinaison des données `wbstats` et du fonds de carte `naturalearth`.
-
-### Etape 1 : récupération des données statistiques
-
-
-Nous commençons par récupérer les données brutes de population et de CO2 en 2018 pour les pays de la CEDEAO et on y ajoute les latitues et longitues des centres des pays.
-
-```{r}
-cedeao<-c("BEN","BFA","CPV","CIV", "GMB","GIN","GNB","GHA","LBR","MLI","NER","NGA","SEN","SLE","TGO")
-df   <- wb_data(indicator  = c("SP.POP.TOTL", "EN.ATM.CO2E.KT"),
-                return_wide = TRUE,
-                start_date = 2018,
-                end_date = 2018,
-                country = cedeao)
-kable(df)
-
-```
-
-Nous renommons les variables pour avoir un tableau plus simple ou la population est en millions d'habitants, les émissions de CO2 en millions de tonnes. On y ajoute l'intensité des émissions en tonnes par habitant.
+# Select docvar fields and rename media
+qd$when <-as.Date(qd$publish_date)
+qd$who <-media
+docvars(qd)<-docvars(qd)[,c("who","when")]
 
 
 
-```{r}
 
-don <-df %>% select(ISO3 = iso3c, NOM = country, POP = SP.POP.TOTL, CO2 = EN.ATM.CO2E.KT) %>%
-            mutate(POP = POP/1000000, CO2 = CO2/1000, CO2_hab = CO2/POP)
-kable(don,digits = 2)
+# Add global meta
+meta(qd,"meta_source")<-"Media Cloud "
+meta(qd,"meta_time")<-"Download the 2021-09-30"
+meta(qd,"meta_author")<-"Elaborated by Claude Grasland"
+meta(qd,"project")<-"ANR-DFG Project IMAGEUN"
 
 ```
 
@@ -425,55 +147,809 @@ kable(don,digits = 2)
 
 
 
-### Etape 2 : Récupération du fonds de carte
+```{r, echo=TRUE}
+store <- "data/mediacloud"
+type<- ".RDS"
+myfile <- paste(store,"/",media,type,sep="")
+myfile
+saveRDS(qd,myfile)
+qd[1:3]
+summary(qd,3)
 
-on récupère ensuite le fonds de carte en ne gardant que les pays de la CEDEAO
+```
+
+### Back transformation to tibble
+
+In the following steps, we will make an intensive use of quanteda, but sometimes it can be useful to export the results in a more practical format or to use other packages. For this reasons, it is important to know that the `tidytext`package can easily transform quanteda object in tibbles which are more classical and easy to manage and to export in other formats like data.frame or data.table. 
 
 ```{r}
-cedeao<-c("BEN","BFA","CPV","CIV", "GMB","GIN","GNB","GHA","LBR","MLI","NER","NGA","SEN","SLE","TGO")
-map<-st_as_sf(countries110)
-map<-st_as_sf(countries110) %>% 
-        select(adm0_a3,geometry) %>% 
-        rename(ISO3 = adm0_a3) %>%
-        filter(ISO3 %in% cedeao)
-plot(map$geometry, col="lightyellow")
+td <- tidy(qd)
+kable(head(td))
+```
+
+## Geographical tags
+
+
+
+The aim of this section is to add to the quanteda corpus different metadata related to the geographical entities that are mentioned in the news. We do not discuss here the problems related to the choice of a list of entities and we just apply a method of recognition based on a dictionary. It is theoretically possible to recognize a great number of spatial entities (regions, continents, cities, ...) put we will limit here our research to the case of states recognized at UN and some adding territories partly recognized like Kosovo, Northern Cyprus or Taiwan. 
+
+
+
+
+### Load dictonary
+
+We start by loading the last version of the Imageun dictionary and we extract our target language (here : french).
+
+```{r load_dict}
+# Load multilanguage dictionary
+dict<-fread("data/mediacloud/global_state_V2.csv")
+
+# Select french dictionary
+dict <- dict[dict$lang=="fr",]
+
+
+head(dict)
+```
+
+### Load corpus
+
+```{r}
+qd <- readRDS("data/mediacloud/fr_BEN_tribun.RDS")
+```
+
+### Load tagging function
+
+```{r func_annotate}
+extract_tags <- function(qd = qd,                      # the corpus of interest
+                         lang = "fr",                  # the language to be used
+                         dict = dict,                  # the dictionary of target 
+                         code = "ISO3" ,                # variable used for coding
+                         alias = "x",                   # variable used for alias
+                         tagsname = "states",           # name of the tags column
+                         split  = c("'","’","-"),       # split list
+                         tolow = TRUE  ,                # Tokenize text
+                         comps = c("Afrique du sud")  # compounds
+                         )
+{ 
+
+
+  
+# Tokenize  
+x<-as.character(qd)
+
+
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       x <- gsub(reg," ",x)}  
+if(tolow) { x <- tolower(x)} 
+toks<-tokens(x)
+
+# compounds
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       comps<- gsub(reg," ",comps)}  
+if(tolow)       {comps <- tolower(comps)}  
+toks<-tokens_compound(toks,pattern=phrase(comps))
+
+  
+# Load dictionaries and create compounds
+
+  ## Target dictionary
+
+labels <-dict[[alias]]
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       labels<- gsub(reg," ",labels)}  
+if(tolow)       {labels <- tolower(labels)}  
+toks<-tokens_compound(toks,pattern=phrase(labels))
+  
+ # create quanteda dictionary
+keys <-gsub(" ","_",labels)
+qd_dict<-as.list(keys)
+names(qd_dict)<-dict[[code]]
+qd_dict<-dictionary(qd_dict,tolower = FALSE)
+
+# Identify geo tags (states or reg or org ...)
+toks_tags <- tokens_lookup(toks, qd_dict, case_insensitive = F)
+toks_tags <- lapply(toks_tags, unique)
+toks_tags<-as.tokens(toks_tags)
+list_tags<-function(x){res<-paste(x, collapse=' ')}
+docvars(qd)[[tagsname]]<-as.character(lapply(toks_tags,FUN=list_tags))
+docvars(qd)[[paste("nb",tagsname,sep="")]]<-ntoken(toks_tags)
+
+
+
+# Export results
+return(qd)
+ }
 ```
 
 
 
-### Etape 3 : Jointure du fonds de carte et des statistiques
+### Annotate all entities
 
-```{r}
-mapdon <- right_join(don,map) %>% st_as_sf()
-kable(head(mapdon))
+In a first step, we annotate all geographic entities together in order to benefit from the cross-definition of their respective compounds. We will separate them by subcategories in a second step. 
+
+```{r annotate, eval=TRUE}
+
+
+
+t1<-Sys.time()
+
+frcomps<-c("mer de Chine", "océan indien", "continent américain", "pays américains")
+
+qd <- extract_tags (qd = qd,
+                     lang="fr",
+                     dict = dict,
+                     code = "ISO3",
+                     alias = "x",
+                     tagsname = "states",
+                     split = c("'","’","-"),
+                     comps = frcomps,
+                     tolow = TRUE)
+
+t2 = Sys.time()
+paste("Program executed in ", t2-t1)
+
+table(qd$nbstates)
+
+
 ```
 
-### Etape 4 : Visualisation avec mapsf
+
+### check news with maximum state number
+
+```{r check_states_news}
+table(qd$nbstates)
+check<-corpus_subset(qd,nbstates>3)
+x<-data.frame(who=check$who,when = check$when,text=as.character(check),states=check$states,nbstates=check$nbstates)
+x<-x[order(x$nbstates,decreasing = T),]
+kable(x)
+```
+
+## Topic tags
+
+### Dictionary
+
+We decide here to use lower case transformation. We use a star for the words that can take a plural form.
+
+```{r dico pandemic}
+label <- c("épidémie*", "pandémie*", "virus", "oms", "ébola", "ebola",  "h1n1","sras", "chikungunya", "choléra", "peste", "covid*","coronavir*","ncov*")
+code  <- rep("pand", length(label))
+lang  <- rep("fr", length(label))
+dict_pande <- data.frame(code,lang,label)
+kable(dict_pande)
+
+frcomps<-c("virus informatique")
+```
+
+
+### Annotation
+
+```{r annotate pandemic, eval=FALSE}
+
+qd <- extract_tags (qd = qd,
+                     lang="fr",
+                     dict = dict_pande,
+                     code = "code",
+                     alias = "label",
+                    tagsname = "pand",
+                     split = c("'","’","-"),
+                     comps = frcomps,
+                     tolow = TRUE)
+
+table(qd$nbpand)
+
+```
+
+
+### Visualization
+
+
+```{r visualization pandemic}
+x<-data.table(docvars(qd))
+x$month<-cut(x$when,breaks="month")
+x$tag<-x$nbpand !=0
+tab<-x[,.(tot=.N),by=.(month,tag, who)]
+tab<-tab[tab$tag==TRUE,]
+tab$month<-as.Date(tab$month)
+
+       
+       p<-ggplot(tab, aes(x=month,fill =who, y=tot))+
+         geom_bar(stat="identity")+
+         ggtitle(label ="Pandemic : distribution of tags by month and media")
+p
+```
+
+
+
+### Save thematically anotated corpus
+
+```{r, eval=TRUE}
+saveRDS(qd,"data/mediacloud/fr_BEN_tribun.RDS")
+
+```
+
+```{r}
+
+#' @title create an hypercube
+#' @name hypercube
+#' @description create a network of interlinked states
+#' @param corpus a corpus of news in quanteda format
+#' @param who the source dimension
+#' @param when the time dimension
+#' @param timespan aggreation of time
+#' @param what a list of topics
+#' @param where1 a list of states
+#' @param where2  a list of states
+
+
+hypercube   <- function( corpus = qd,
+                        who = "source",
+                        when = "when",
+                        timespan = "week",
+                        what = "what",
+                        where1 = "where1",
+                        where2 = "where2")
+{
+
+
+  
+# prepare data
+
+  don<-docvars(corpus)
+  
+  df<-data.table(id     = docid(corpus),
+                 who    = don[[who]],
+                 when   = don[[when]],
+                 what   = don[[what]],
+                 where1 = don[[where1]],
+                 where2 = don[[where2]])
+
+  # adjust id
+ df$id<-paste(df$id,"_",df$order,sep="")
+ 
+# change time span
+  df$when<-as.character(cut(as.Date(df$when), timespan, start.on.monday = TRUE))
+
+# unnest where1
+  df$where1[df$where1==""]<-"_no_"
+  df<-unnest_tokens(df,where1,where1,to_lower=F)
+  
+# unnest where2
+  df$where2[df$where2==""]<-"_no_"
+  df<-unnest_tokens(df,where2,where2,to_lower=F) 
+  
+# unnest what
+  df$what[df$what==""]<-"_no_"
+  df<-unnest_tokens(df,what,what,to_lower=F) 
+  
+
+
+# Compute weight of news
+  newswgt<-df[,list(wgt=1/.N),list(id)]
+  df <- merge(df,newswgt, by="id")
+
+
+# ------------------------ Hypercube creation --------------------#
+  
+  
+# Aggregate
+  hc<- df[,.(tags = .N, news=sum(wgt)) ,.(who, when,where1,where2, what)]
+  
+# Convert date to time
+  hc$when<-as.Date(hc$when)
+  
+# export
+  return(hc)
+  
+}
+
+```
+
 
 
 ```{r}
 
-mf_theme("agolalight")
-mapdon %>% 
-  mf_map() %>%
-  mf_map("CO2_hab", 
-         "choro",
-         breaks="jenks",
-         leg_pos="bottomleft",
-         leg_title = "en tonnes/hab.")%>%
-  mf_map("CO2", 
-         "prop",
-         col="red",
-         leg_pos = "topleft",
-         leg_title = "en tonnes")
-mf_title("Emissions de CO2 des pays de la CEDEAO en 2018")
+hc <-    hypercube( corpus   = qd,
+                    who      = "who",
+                    when     = "when",
+                    timespan = "day",
+                    what     = "pand",
+                    where1   = "states",
+                    where2   = "states")
+kable(head(hc))
 
+
+```
+```{r}
+saveRDS(hc,"data/mediacloud/hc_Benin_states_pand.RDS")
 ```
 
 
 
 
 
+# Hypercubes exploration
+
+
+
+```{r}
+#source("pgm/hypernews_functions_V6.R")
+```
+
+
+
+## Objectives
+
+The different dimensions of an hypercube can be analysed through different aggregation of the dimensions of the hypercubes, leading to different tables authorizing different modes of visualization. Each function is named according to the dimensions that are combined. Each function will produce two different outputs, a statistical table and an interactive  graphic 
+
+
+### Statistical table
+
+Whatever the dimensions we decide to cross, we build a table where we realize a statistical test in order to identify the cells that are characterized by positive or negative outliers i.e. cells where the phenomena of interest (WHAT) is significantly more present or less present than usual. More precisely, the function will produce two for each cell of the cross dimension table :
+
+- **a salience index (Xobs/Xest)** : defined as the ratio between observed and estimated number of news where the topic is present. 
+- **an outlier index (prob (Xobs > Xest))** : defined as the probability that the number of news where the topic is present is significantly greater than expected. 
+
+In both cases we introduce two parameters of control that will limit the computation of indexes to the cells where it appears statistically relevant to realize the measure :
+
+- **Minimum sample size (minsamp) :** is the total number of news present in the cell before to compute the probability of apparition of the topic. The default value is equal to **20** as we consider as not meaningfull to compute a proportion on a smaller sample. 
+
+- **Minimum estimated value (mintest):** is the threshold of computation of the chi-square test according to the estimated number of news where the topic is present. According to statistical rules of the chi-square test, this threshold should be equal to **5** for optimal conditions of application. The package R introduce indeed a warning message if the condition is not satisfied, which can increase the time of computation. 
+
+Of course, the user can decide to relax or reinforce these two conditions but it is normally better to avoid to do it. When conditions are not fulfilled, the graphic output will not display the cells where the indexes can not be computed.
+
+The function that realize the test is the following one
+
+```{r}
+#### ---------------- testchi2 ----------------
+#' @title  Compute the average salience of the topic and test significance of deviation
+#' @name what
+#' @description create a table and graphic of the topic
+#' @param tabtest a table with variable trial, success and null.value
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest : Threshold of estimated value requested for chi-square test
+
+
+testchi2<-function(tabtest=tabtest,
+                   minsamp = 20,
+                   mintest = 5) 
+{
+  tab<-tabtest
+  n<-dim(tab)[1]
+  
+  # Compute salience if sample size sufficient (default : N>20)
+  tab$estimate <-NA
+  tab$salience <-NA
+  tab$chi2<-NA
+  tab$p.value<-NA
+  if (tab$trial > minsamp){ tab$estimate<-round(tab$success/tab$trial,5)
+  tab$salience<-tab$estimate/tab$null.value
+  
+  # Chi-square test if estimated value sufficient (default : Nij* > 5)
+  
+  for (i in 1:n) {
+    if(tab$trial[i]*tab$null.value[i]>=mintest) {  
+      test<-prop.test(x=tab$success[i],n=tab$trial[i], p=tab$null.value[i], 
+                      alternative = "greater")
+      tab$chi2[i]<-round(test$statistic,2)
+      tab$p.value[i]<-round(test$p.value,5)
+    } 
+  }
+  }
+  return(tab)
+}
+
+```
+
+
+### Interactive graphic
+
+Once the statistical table has been computed, the user can choose between two different visualizations, based on the salience index (exploration) or the chi-square test (ouliers detection). In both case the result will be an interactive figure realized in plotly where it is possible to click on each cell and have a look at the statistical parameters.
+
+The user interested in static graphic (e.g. for publication) can easily adapt the program and realize new functions, for example in ggplot2. 
+
+In order to illustrate each type of graphic, we will choose the example of the topic of mobility without distinction between migrants and refugees. 
+
+
+```{r}
+hc <- readRDS("data/mediacloud/hc_Benin_states_pand.RDS")
+```
+
+
+## Topic frequence (What ?) 
+
+The first function has only one dimension and evaluate the proportion of news related to the topic. As a consequence, this function is not associated to a statistical test and return only a table and a graphic presenting the proportion of news where the topic is present or not. 
+
+### Function
+
+```{r}
+### ---------------- what ----------------
+#' @title  Compute the average salience of the topic
+#' @name what
+#' @description create a table and graphic of the topic
+#' @param hc an hypercube prepared as data.table
+#' @param subtop a subtag of the main tag (default = NA)
+#' @param title Title of the graphic
+
+
+what <- function (hc = hypercube,
+                  subtop = NA,
+                  title = "What ?")
+{
+ 
+  
+tab<-hc
+if (is.na(subtop)){tab$what <-tab$what !="_no_"}else {tab$what <- tab$what == subtop}
+
+tab<-tab[,list(news = sum(news)),by = what]
+tab$pct<-100*tab$news/sum(tab$news)
+
+p <- plot_ly(tab,
+             labels = ~what,
+             values = ~pct,
+             type = 'pie') %>%
+  layout(title = title,
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+output<-list("table" = tab, "plotly" =p)
+
+return(output)
+
+}
+```
+
+
+### Example
+
+```{r what example ,warning = FALSE, message = FALSE}
+res_what <- what(hc = hc,
+             subtop = NA,
+             title = "Topic news")
+res_what$table
+res_what$plotly
+```
+
+
+
+
+
+
+
+
+
+
+
+
+## Topic variation by media (who.what)
+
+The function who.what explore the variation of interest for the topic in the different media of the corpus.
+
+### Function
+
+```{r}
+
+#### ---------------- who.what ----------------
+#' @title  visualize variation of the topic between media
+#' @name who.what
+#' @description create a table of variation of the topic by media
+#' @param hc an hypercube prepared as data.table
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param title Title of the graphic
+
+
+who.what <- function (hc = hypercube,
+                      test = FALSE,
+                      minsamp = 20,
+                      mintest = 5,
+                      title = "Who says What ?")
+{
+  
+  tab<-hc
+  {tab$what <-tab$what !="_no_"}
+  
+  tab<-tab[,list(trial = sum(news),success=round(sum(news*what),0)),by = list(who)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  p <- plot_ly(tab,
+               x = ~who,
+               y = ~estimate*100,
+               color= ~index,
+               colors= mycol,
+               hoverinfo = "text",
+               text = ~paste('Source: ',who,
+                             '<br /> Total news  : ', round(trial,0),
+                             '<br /> Topic news : ', round(success,0),
+                             '<br /> % observed  : ', round(estimate*100,2),'%',
+                             '<br /> % estimated : ', round(null.value*100,2),'%',
+                             '<br /> Salience : ', round(salience,2),  
+                             '<br /> p.value : ', round(p.value,4)),
+               type = "bar")  %>%
+    layout(title = title,
+           yaxis = list(title = "% news"),
+           barmode = 'stack')
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+```
+
+
+### Example
+
+We present here the statistical table and the two types of graphics that can be produced. In the following case we will only present the outlier graphic. 
+
+```{r who.what example,warning = FALSE, message = FALSE, eval=FALSE}
+
+
+res_who_what<- who.what(hc=hc, 
+                        test = TRUE,
+                        minsamp = 5,
+                        mintest = 1,
+                        title = "Topic news by media - Significance")
+res_who_what$plotly
+
+```
+
+The analysis reveal a clear over-representation of the topic in the french newspaper *Le Figaro* (4.37% of news) as compared to the other media (2.1 to 2.5%). 
+
+
+## Topic variation through time (when.what)
+
+In this case we want to analyze if the topic has been more or less present at one period of time or another. It can therefore be interesting to modify the level of agregation before to do that and transform the initial hypercube (by day) toward another level of agregation. It is also possible to change the size of the time period as the outlier are defined by reference to the whole period of analysis
+
+### Function
+
+```{r}
+#### ---------------- when.what ----------------
+#' @title  visualize variation of the topic through time
+#' @name when.what
+#' @description create a table of variation of the topic by media
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param title Title of the graphic
+
+
+when.what <- function (hc = hypercube,
+                       test = FALSE,
+                       minsamp = 20,
+                       mintest = 5,
+                       title = "Who says What ?")
+{
+  
+  tab<-hc
+  {tab$what <-tab$what !="_no_"}
+  
+  tab<-tab[,list(trial = sum(news),success=round(sum(news*what),0)),by = list(when)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  
+  p <- plot_ly(tab,
+               x = ~as.character(when),
+               y = ~estimate*100,
+               color= ~index,
+               colors= mycol,
+               hoverinfo = "text",
+               text = ~paste('Time: ',when,
+                             '<br /> Total news  : ', round(trial,0),
+                             '<br /> Topic news : ', round(success,0),
+                             '<br /> % observed  : ', round(estimate*100,2),'%',
+                             '<br /> % estimated : ', round(null.value*100,2),'%',
+                             '<br /> Salience : ', round(salience,2),  
+                             '<br /> p.value : ', round(p.value,4)),
+               type = "bar")  %>%
+    layout(title = title,
+           yaxis = list(title = "% news"),
+           barmode = 'stack')
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+```
+
+
+
+### Example 1 : 2014-2015  by month
+
+
+```{r when.what example1,warning = FALSE, message = FALSE, eval=TRUE}
+# Modify time period by month
+hc2 <- hc %>% mutate(when = cut(when,breaks="month"))
+
+
+res_when_what<- when.what(hc=hc2, 
+                          test=FALSE,
+                          minsamp=5,
+                          mintest=1,
+                          title = "Topic news by month - Significance")
+
+
+res_when_what$plotly
+```
+
+The analysis reveals clear discontinuities in the timeline of the topic. We start with a low level (0.5 to 1.2%) from January 2014 to March 2015, followed by a brutal jump in April-June 2015 (3 to 5%) and a major peak in september 2015 (15.8% of news). At the end of the period, the level is clearly higher than at the beginning.  
+
+
+
+
+
+
+
+
+## Topic variation through space (where.what)
+
+This function analyze the spatial distribution of places associated to the topic. As we have only collected states, we do not take into account the news where the topic of interest is associated to geographical area different from states (e.g. "migrants from subsaharan Africa"). But it is only a minority of cases and the fact to collect states make possible to produce easily a geographical map of the phenomena.
+
+### Function
+
+```{r}
+
+#### ---------------- where.what ----------------
+#' @title  visualize spatialization of the topic 
+#' @name where.what
+#' @description create a table of variation of the topic by media
+#' @param hc an hypercube prepared as data.table
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param map a map with coordinates in lat-long
+#' @param proj a projection accepted by plotly
+#' @param title Title of the graphic
+
+
+where.what <- function (hc = hypercube,
+                        test = FALSE,
+                        minsamp = 20,
+                        mintest = 5,
+                        map = world_ctr,
+                        proj = 'azimuthal equal area',
+                        title = "Where said What ?")
+{
+  
+  tab<-hc
+  tab$what <-tab$what !="_no_"
+  
+  tab<-tab[,list(trial = round(sum(news),0),success=round(sum(news*what),0)),by = list(where1)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  
+  
+  tab<-tab[order(-chi2),]
+  
+  
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  
+  map<-merge(map,tab,all.x=T,all.y=F,by.x="ISO3",by.y="where1")
+  
+  
+  
+  #map2<-map[is.na(map$pct)==F,]
+  #map2<-st_centroid(map2)
+  #map2<-st_drop_geometry(map2)
+  
+  
+  g <- list(showframe = TRUE,
+            framecolor= toRGB("gray20"),
+            coastlinecolor = toRGB("gray20"),
+            showland = TRUE,
+            landcolor = toRGB("gray50"),
+            showcountries = TRUE,
+            countrycolor = toRGB("white"),
+            countrywidth = 0.2,
+            projection = list(type = proj))
+  
+  
+  
+  p<- plot_geo(map)%>%
+    add_markers(x = ~lon,
+                y = ~lat,
+                sizes = c(0, 250),
+                size = ~success,
+                #             color= ~signif,
+                color = ~index,
+                colors= mycol,
+                hoverinfo = "text",
+                text = ~paste('Location: ',NAME,
+                              '<br /> Total news  : ', round(trial,0),
+                              '<br /> Topic news : ', round(success,0),
+                              '<br /> % observed  : ', round(estimate*100,2),'%',
+                              '<br /> % estimated : ', round(null.value*100,2),'%',
+                              '<br /> Salience : ', round(salience,2),  
+                              '<br /> p.value : ', round(p.value,4))) %>%
+    
+    layout(geo = g,
+           title = title)
+  
+  
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+```
+
+
+
+### Example
+
+When we realize the map, we eliminate the news related to the topic where no countries has been mentioned. As a consequence the reference value is modified : in the whole sample 2.73% of news was related to the topic but in the sample of news where one country is mentioned  2.83% of the news  are related the topic.
+
+As the total number of news can be small in some countries, we have reduced here the parameters of the statistical test in order to visualize more countries on the map. It is therefore necessary to be cautious in the analysis of results.
+
+```{r where.what example,warning = FALSE, message = FALSE, eval=TRUE}
+map<-readRDS("data/mediacloud/world_ctr_4326.Rdata")
+hc2<-hc %>% filter(where1 !="_no_", where2 !="_no_")
+
+res_where_what<- where.what(hc=hc2,
+                            test=FALSE,
+                            minsamp=10,
+                            map = map, 
+                            mintest =1,
+                            title = "Topic news by states - Significance")
+res_where_what$plotly
+```
+
+The analysis reveals that some countries are "specialized" in the topic during the period of observation. For example 53.5% of the news about Hungary was associated to the question of migrants and refugees, which is obviously related to the mediatization of the wall established by Viktor Orban in 2015. Other countries are characterized on the contrary by an under-representation of the topic like the USA where the topic is only associated to 0.7% of news. But the situation will change after Donald Trump's election who will also establish a wall which will dramatically increase the number of news about USA and migrants. 
+
+## Crossing 3 dimensions ?
+
+
+
+- TELEMAC : https://analytics.huma-num.fr/Claude.Grasland/telemac/
 
 
 
