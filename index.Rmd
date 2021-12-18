@@ -5,8 +5,6 @@ date: "`r Sys.Date()`"
 author: 
  - name: Claude Grasland
    affiliation: Université de Paris (Diderot), UMR 8504 Géographie-cités, FR 2007 CIST
- - name: Hugues Pecout
-   affiliation : FR 2007 CIST
 image: "data/figures/logoEE.png"   
 logo: "data/figures/logoEE.png"  
 output:
@@ -44,7 +42,10 @@ library(wbstats)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
-
+library(quanteda)
+library(tidytext)
+library(plotly)
+library(RColorBrewer)
 
 ## Global options
 options(max.print="75")
@@ -71,11 +72,13 @@ Les tableaux de données sont sélectionnées prioritairement sur leurs **qualit
 
 C'est la raison pour laquelle la sélection initiale effectuée par un enseignant-chercheur éloigné du terrain devra impérativement être validée par  des spécialistes du pays concerné, aussi bien en termes pédagogiques que thématiques.
 
-Ce document de travail est organisé en deux parties correspondant à deux échelles d'analyse :
+Ce document de travail est organisé en trois parties  :
 
 - **les données infranationales** permettent d'analyse les variations internes du territoire du Benin que ce soit dans le cadre de mailles administratives (régions, départements, communes), d'unités ponctuelles (villes, marchés, ...) ou de grilles de collecte (carroyage, données satellitaires, ...)
 
 - **les données supranationales** permettent a contrario de positionner le Benin considéré comme une seule entité vis à vis d'autres pays à l'échelle d'une région (e.g. CEDEAO), d'un continent (Afrique), voire du Monde entier.
+
+- **les données non conventionnelles** correspondent à d'autres sources de données ne relevant pas de la statistique publique et qui sont désignés en anglais sous le nom de *soft data* souvent issues du web ou des réseaux sociaux. On se limite ici à un exemple,les flux RSS émis par deux journaux du Bénin, mais ce type d'analyse pourrait évidemment être fait sur des données twitter, facebook, etc. 
 
 Ce document n'est évidemment pas exhaustif et devra être complété par d'autres chercheurs, notamment s'agissant des données d'enquête (e.g. EDS) ou des relevés de terrain (GPS, kobo toolbox, ...)
 
@@ -1097,6 +1100,810 @@ mf_title("Emissions de CO2 des pays de la CEDEAO en 2018")
 
 
 
+# DONNEES NON CONVENTIONNELLES
+
+Sous le terme de données *non conventionnelles* on peut regrouper toute une série de bases de données qui ne sont pas issues de la statistique publique mais qui peuvent faire l'objet d'exploitations intéressantes. Cela recouvre notamment les données issues des réseaux sociaux (facebook, twitter, ...) mais aussi les données collaboratives (Open Street Map) où les données d'entreprise privée mises à disposition du public. 
+
+## Données médiatiques
+
+A titre d'exemple de données non conventionnelles, nous proposons d'examiner le cas des flux RSS de deux journaux du Benin, mis à disposition par le site de recherche américain Media Cloud. 
+
+
+### Préparation des données
+
+#### Importation du fichier csv
+
+Le fichier qui a été préalablement nettoyé coporte 36466 titres de nouvelles de presses publiées entre novembre 2017 et décembre 2021. Sa structure est très simple comme on peut le voir ci-dessous. 
+
+```{r loadcsv, echo=TRUE}
+df<-fread("data/corpus/media_benin.csv",encoding = "UTF-8")
+kable(head(df))
+```
+
+
+
+#### Transformation en corpus quanteda
+
+Pour faciliter l'analyse textuelle, le fichier d'origine est transformé en objet de type *corpus* pour être utilisé par le package d'analyse textuelle `quanteda`.  On ajoute au fichier différentes informations sur les périodes de temps pour faciliter les analyses ultérieures.
+
+```{r create quanteda, echo=TRUE}
+# library(quanteda)
+# Create Quanteda corpus
+qd<-corpus(df,text_field = "text")
+qd$media<-as.factor(qd$who)
+levels(qd$media)<-c("24 Heures","La Nouvelle Tribune")
+
+qd$day     <- as.Date(qd$when)
+qd$week    <- cut(qd$day, "weeks", start.on.monday=TRUE)
+qd$month   <- cut(qd$day, "months")
+qd$weekday <- weekdays(qd$day)
+
+
+# Add global meta
+meta(qd,"meta_source")<-"Media Cloud "
+meta(qd,"meta_time")<-"Téléchargé le 18 décembre 2021"
+meta(qd,"meta_author")<-"Auteur :  Claude Grasland"
+meta(qd,"project")<-"Ecole d'été CIST 2022"
+
+class(qd)
+summary(qd,6)
+head(qd,6)
+
+```
+
+#### Transformation en tibble
+
+L'objet quanteda étant complexe, on peut décider à tout moment d'opérer une transformation inverse e se servant de la fonction *tidy* du package `tidytext`. 
+
+```{r, echo=TRUE}
+td <- tidy(qd)
+class(td)
+```
+
+#### Variations temporelles
+
+Avant d'analyser les nouvelles, il faut s'assurer que leur production est régulière dans le temps, à la fois pour l'ensemble de la période et au cours des différents jours de la semaine.
+
+```{r, echo=FALSE}
+
+news_weeks <- td %>% group_by(week,media) %>%
+                    count(nbnews = n())
+p<-ggplot(news_weeks, aes(x=as.Date(week),y=nbnews, col=media))+
+   geom_line()+
+   geom_smooth(method = 'loess', formula = 'y~x')+
+   scale_y_continuous("Nombre de nouvelles", limits = c(0,NA)) +
+   scale_x_date("Semaine") +
+         ggtitle(label ="Nombre de nouvelles envoyées par flux RSS",
+                  subtitle = "1er Nov.2017- 18 Dec.2021")
+p
+```
+- *Commenaire* : Les deux journaux connaissent un régime assez régulier mais en croissance au cours du temps. On note toutefois une interruption de la *Nouvelle Tribune* entre mars et juin 2019. qui pourrait avoir été lien à l'interdiction temporaire du journal. 
+
+
+
+```{r news_weekdays_fr, echo=FALSE}
+#compute frequencies by weekday
+#news_weekdays<-dt[,.(newstot=.N),by=.(weekday,who)]
+news_weekdays <- td %>% group_by(weekday,media) %>%
+                    count(nbnews = n()) %>% 
+                   group_by(media) %>%
+                   mutate(pct = 100*nbnews / sum(nbnews))
+
+
+# Translate weekdays in english and order
+news_weekdays$weekday<-as.factor(news_weekdays$weekday)
+levels(news_weekdays$weekday)<-c("7.Dimanche","4.Jeudi","1.Lundi","2.Mardi","3.Mercredi","6.Samedi","5.Vendredi")
+news_weekdays$weekday<-as.factor(as.character(news_weekdays$weekday))
+news_weekdays<-news_weekdays[order(news_weekdays$weekday),]
+
+
+p<-ggplot(news_weekdays, aes(x=weekday,fill = media, y=pct))+
+         geom_bar(position = "dodge", stat="identity")+
+         scale_x_discrete("Jour de la semaine")+
+         scale_y_continuous("Part des nouvelles (%)", limits = c(0,NA)) +
+         ggtitle(label ="Variations hebdomadaires des nouvelles",
+                  subtitle = "1er Nov.2017- 18 Dec.2021")
+p
+```
+
+- *Commenaire* : Les deux journaux connaissent clairement une baisse de leur activité au cours du week-end, l'émission de nouvelles par leur flux RSS  étant plus faible le samedi et le dimanche.
+
+
+
+### Taggage géographique
+
+Bien qu'il s'agissent de textes courts, les titres des nouvelles de presse comportent souuvent un grand nombre de noms de lieux qu'il était intéressant d'indetifier sous forme de "tags" c'est-à-dire d'étiquettes indiquant pour chaque nouvelle les lieux mentionnés. 
+
+
+
+#### Dictionnaire
+
+On peut par exemple repérer les pays étrangers qui sont cités dans les nouvelles en se servant d'un dictionnaire de mots ou de racines créé dans le cadre de projets de recherche sur les nouvelles internationales (ANR Geomedia, H2020 ODYCCEUS).
+
+```{r load_dict, echo=FALSE}
+# Load multilanguage dictionary
+dict<-fread("data/corpus/global_state_V2.csv")
+
+# Select french dictionary
+dict <- dict[dict$lang=="fr",]
+
+# Exclude Benin
+dict<-dict[dict$ISO3 !="BEN",]
+
+
+head(dict)
+```
+
+
+
+```{r func_annotate, echo=FALSE}
+extract_tags <- function(qd = qd,                      # the corpus of interest
+                         lang = "fr",                  # the language to be used
+                         dict = dict,                  # the dictionary of target 
+                         code = "ISO3" ,                # variable used for coding
+                         alias = "x",                   # variable used for alias
+                         tagsname = "states",           # name of the tags column
+                         split  = c("'","’","-"),       # split list
+                         tolow = TRUE  ,                # Tokenize text
+                         comps = c("Afrique du sud")  # compounds
+                         )
+{ 
+
+
+  
+# Tokenize  
+x<-as.character(qd)
+
+
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       x <- gsub(reg," ",x)}  
+if(tolow) { x <- tolower(x)} 
+toks<-tokens(x)
+
+# compounds
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       comps<- gsub(reg," ",comps)}  
+if(tolow)       {comps <- tolower(comps)}  
+toks<-tokens_compound(toks,pattern=phrase(comps))
+
+  
+# Load dictionaries and create compounds
+
+  ## Target dictionary
+
+labels <-dict[[alias]]
+if(length(split) > 0) { reg<-paste(split, collapse = '|')
+                       labels<- gsub(reg," ",labels)}  
+if(tolow)       {labels <- tolower(labels)}  
+toks<-tokens_compound(toks,pattern=phrase(labels))
+  
+ # create quanteda dictionary
+keys <-gsub(" ","_",labels)
+qd_dict<-as.list(keys)
+names(qd_dict)<-dict[[code]]
+qd_dict<-dictionary(qd_dict,tolower = FALSE)
+
+# Identify geo tags (states or reg or org ...)
+toks_tags <- tokens_lookup(toks, qd_dict, case_insensitive = F)
+toks_tags <- lapply(toks_tags, unique)
+toks_tags<-as.tokens(toks_tags)
+list_tags<-function(x){res<-paste(x, collapse=' ')}
+docvars(qd)[[tagsname]]<-as.character(lapply(toks_tags,FUN=list_tags))
+docvars(qd)[[paste("nb",tagsname,sep="")]]<-ntoken(toks_tags)
+
+
+
+# Export results
+return(qd)
+}
+
+### Application de la fonction
+frcomps <-c("océan indien","continent américain", "pays américain*")
+
+qd <- extract_tags (qd = qd,
+                     lang="fr",
+                     dict = dict,
+                     code = "ISO3",
+                     alias = "x",
+                     tagsname = "states",
+                     split = c("'","’","-"),
+                     comps = frcomps,
+                     tolow = TRUE)
+
+
+
+
+```
+
+
+#### Résultats du taggage
+
+On regarde pour chaque journal la distribution des nouvelles en fonction du nombre de pays étrangers cités. Il apparaît alors clairement que *La Nouvelle Tribune* est beaucoup plus tourné vers l'international (39% des nouvelles citent au moins un pays étrangers) que *24 heures* (moins de 5% des nouvelles citent un pays étranger. 
+
+
+```{r check_states1_news, echo=FALSE}
+x<-100*prop.table(table(qd$nbstates,qd$media),2)
+kable(x,digits=3,caption = "Nombre de pays étrangers cités dans les nouvelles")
+```
+
+On peut afficher les nouvelles qui affichent un nombre record de pays étrangers dans leur titre. 
+
+```{r check_states2_news, echo=FALSE}
+table(qd$nbstates)
+check<-corpus_subset(qd,nbstates>3)
+x<-data.frame(who=check$who,when = check$when,text=as.character(check),states=check$states,nbstates=check$nbstates)
+x<-x[order(x$nbstates,decreasing = T),]
+kable(head(x,10))
+```
+
+
+
+
+
+
+### Taggage thématique
+
+On peut également procéder à un taggae thématique en cherchant à repérer les nouvelles qui correspondent à un sujet dont l'on souhaite étudier la présence dans les médias. A titre d'exemple, nous allons ici essayer de repérer les nouvelles traitant d'épidémies et de pathologies transmissibles
+
+#### Dictionaire
+
+Nous proposons par exemple de partir du dictionaire suivant :
+
+```{r dico pandemic, echo=FALSE}
+label <- c("épidémie*", "pandémie*", "crise sanitaire","virus", "vaccin*", "oms", "ébola", "ebola",  "h1n1","sras", "chikungunya", "choléra", "peste", "paludisme", "covid*","coronavir*","ncov*")
+code <- c("epi", "epi", "epi","virus", "vaccin","oms", "ebola", "ebola",  "h1n1","sras", "chik", "chol", "pest", "palu","covid","covid","covid")
+lang  <- rep("fr", length(label))
+dict_pande <- data.frame(code,lang,label)
+kable(dict_pande)
+
+frcomps<-c("virus informatique")
+```
+```{r, echo=FALSE}
+### Application de la fonction
+frcomps <-c("virus informatique")
+
+
+qd <- extract_tags (qd = qd,
+                     lang="fr",
+                     dict = dict_pande,
+                     code = "code",
+                     alias = "label",
+                     tagsname = "pand",
+                     split = NULL,
+                     comps = frcomps,
+                     tolow = TRUE)
+
+
+
+
+```
+
+
+#### Résultats du taggage
+
+
+```{r check_pand1_news, echo=FALSE}
+x<-100*prop.table(table(qd$nbpand,qd$media),2)
+kable(x,digits=3,caption = "Part des nouvelles parlant de pandémies")
+```
+
+On peut afficher les nouvelles qui affichent un nombre record de pays étrangers dans leur titre. 
+
+```{r check_pand2_news, echo=FALSE}
+table(qd$nbpand)
+check<-corpus_subset(qd,nbpand>1)
+x<-data.frame(who=check$who,when = check$when,text=as.character(check),pand=check$pand, nbpand=check$nbpand)
+x<-x[order(x$nbpand,decreasing = T),]
+kable(head(x,10))
+```
+
+### Exploration multidimensionnelle
+
+Une fois établi un double taggage géographique (Where) et thématique (What) on peut croiser ces deux dimensions avec le média qui a produit les nouvelles (Who) et le moment où les nouvelles ont été publiés (When). On dispose ainsi de quatre dimensions autour desquelles on peut agréger les nouvelles.
+
+
+#### Transformation en hypercube
+
+On commence par croiser les quatre dimensions afin de compter le nombre de nouvelles correspondantes et de stocker le résultat dans un objet unique appelé *hypercube*. 
+
+```{r, echo=FALSE}
+
+#' @title create an hypercube
+#' @name hypercube
+#' @description create a network of interlinked states
+#' @param corpus a corpus of news in quanteda format
+#' @param who the source dimension
+#' @param when the time dimension
+#' @param timespan aggreation of time
+#' @param what a list of topics
+#' @param where1 a list of states
+#' @param where2  a list of states
+
+
+hypercube   <- function( corpus = qd,
+                        who = "source",
+                        when = "when",
+                        timespan = "week",
+                        what = "what",
+                        where1 = "where1",
+                        where2 = "where2")
+{
+
+
+  
+# prepare data
+
+  don<-docvars(corpus)
+  
+  df<-data.table(id     = docid(corpus),
+                 who    = don[[who]],
+                 when   = don[[when]],
+                 what   = don[[what]],
+                 where1 = don[[where1]],
+                 where2 = don[[where2]])
+
+  # adjust id
+ df$id<-paste(df$id,"_",df$order,sep="")
+ 
+# change time span
+  df$when<-as.character(cut(as.Date(df$when), timespan, start.on.monday = TRUE))
+
+# unnest where1
+  df$where1[df$where1==""]<-"_no_"
+  df<-unnest_tokens(df,where1,where1,to_lower=F)
+  
+# unnest where2
+  df$where2[df$where2==""]<-"_no_"
+  df<-unnest_tokens(df,where2,where2,to_lower=F) 
+  
+# unnest what
+  df$what[df$what==""]<-"_no_"
+  df<-unnest_tokens(df,what,what,to_lower=F) 
+  
+
+
+# Compute weight of news
+  newswgt<-df[,list(wgt=1/.N),list(id)]
+  df <- merge(df,newswgt, by="id")
+
+
+# ------------------------ Hypercube creation --------------------#
+  
+  
+# Aggregate
+  hc<- df[,.(tags = .N, news=sum(wgt)) ,.(who, when,where1,where2, what)]
+  
+# Convert date to time
+  hc$when<-as.Date(hc$when)
+  
+# export
+  return(hc)
+  
+}
+
+### Application
+
+hc <-    hypercube( corpus   = qd,
+                    who      = "who",
+                    when     = "when",
+                    timespan = "day",
+                    what     = "pand",
+                    where1   = "states",
+                    where2   = "states")
+kable(head(hc))
+
+```
+
+Nous allons ensuite croiser les dimensions deux à deux et procéder à des test statistiques permettant de repérer les anomalies les plus remarquables à l'aide d'un test du chi-2.
+
+
+
+```{r, echo=FALSE}
+#### ---------------- testchi2 ----------------
+#' @title  Compute the average salience of the topic and test significance of deviation
+#' @name what
+#' @description create a table and graphic of the topic
+#' @param tabtest a table with variable trial, success and null.value
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest : Threshold of estimated value requested for chi-square test
+
+
+testchi2<-function(tabtest=tabtest,
+                   minsamp = 20,
+                   mintest = 5) 
+{
+  tab<-tabtest
+  n<-dim(tab)[1]
+  
+  # Compute salience if sample size sufficient (default : N>20)
+  tab$estimate <-NA
+  tab$salience <-NA
+  tab$chi2<-NA
+  tab$p.value<-NA
+  if (tab$trial > minsamp){ tab$estimate<-round(tab$success/tab$trial,5)
+  tab$salience<-tab$estimate/tab$null.value
+  
+  # Chi-square test if estimated value sufficient (default : Nij* > 5)
+  
+  for (i in 1:n) {
+    if(tab$trial[i]*tab$null.value[i]>=mintest) {  
+      test<-prop.test(x=tab$success[i],n=tab$trial[i], p=tab$null.value[i], 
+                      alternative = "greater")
+      tab$chi2[i]<-round(test$statistic,2)
+      tab$p.value[i]<-round(test$p.value,5)
+    } 
+  }
+  }
+  return(tab)
+}
+
+```
+
+
+
+
+#### Valeur de référence
+
+On commence par calculer la valeur de référence qui est la part des nouvelles relatives à la thématique retenue.
+
+```{r, echo=FALSE}
+### ---------------- what ----------------
+#' @title  Compute the average salience of the topic
+#' @name what
+#' @description create a table and graphic of the topic
+#' @param hc an hypercube prepared as data.table
+#' @param subtop a subtag of the main tag (default = NA)
+#' @param title Title of the graphic
+
+
+what <- function (hc = hypercube,
+                  subtop = NA,
+                  title = "What ?")
+{
+ 
+  
+tab<-hc
+if (is.na(subtop)){tab$what <-tab$what !="_no_"}else {tab$what <- tab$what == subtop}
+
+tab<-tab[,list(news = sum(news)),by = what]
+tab$pct<-100*tab$news/sum(tab$news)
+
+p <- plot_ly(tab,
+             labels = ~what,
+             values = ~pct,
+             type = 'pie') %>%
+  layout(title = title,
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+output<-list("table" = tab, "plotly" =p)
+
+return(output)
+
+}
+
+
+
+### Example
+
+
+res_what <- what(hc = hc,
+             subtop = NA,
+             title = "Valeur de référence (What)")
+res_what$table
+res_what$plotly
+```
+
+- **Commentaire** : Sur l'ensemble de la période, la part des nouvelles du corpus traitant de pandémies est de 5.5%
+
+
+
+
+
+
+#### Variation selon le journal (Who.What)
+
+On examine ensuite si cette valeur de référence est la même dans les différents journaux du corpus.
+
+```{r, echo=FALSE}
+
+#### ---------------- who.what ----------------
+#' @title  visualize variation of the topic between media
+#' @name who.what
+#' @description create a table of variation of the topic by media
+#' @param hc an hypercube prepared as data.table
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param title Title of the graphic
+
+
+who.what <- function (hc = hypercube,
+                      test = FALSE,
+                      minsamp = 20,
+                      mintest = 5,
+                      title = "Who says What ?")
+{
+  
+  tab<-hc
+  {tab$what <-tab$what !="_no_"}
+  
+  tab<-tab[,list(trial = sum(news),success=round(sum(news*what),0)),by = list(who)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  p <- plot_ly(tab,
+               x = ~who,
+               y = ~estimate*100,
+               color= ~index,
+               colors= mycol,
+               hoverinfo = "text",
+               text = ~paste('Source: ',who,
+                             '<br /> Total news  : ', round(trial,0),
+                             '<br /> Topic news : ', round(success,0),
+                             '<br /> % observed  : ', round(estimate*100,2),'%',
+                             '<br /> % estimated : ', round(null.value*100,2),'%',
+                             '<br /> Salience : ', round(salience,2),  
+                             '<br /> p.value : ', round(p.value,4)),
+               type = "bar")  %>%
+    layout(title = title,
+           yaxis = list(title = "% news"),
+           barmode = 'stack')
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+
+
+### Example
+
+
+
+res_who_what<- who.what(hc=hc, 
+                        test = TRUE,
+                        minsamp = 5,
+                        mintest = 1,
+                        title = "Variation selon la source (Who.What)")
+res_who_what$plotly
+
+```
+
+
+- **Commentaire** : Il existe une différence significative entre les deux journaux (p<0.001). Moins de 2% des nouvelles publiées par *24 Heures* parlent de pandémie contre plus 7% des nouvelles publiées par *La Nouvelle Tribune*.
+
+
+#### Variation temporelle (When.What)
+
+Comment évolue l'intérêt des journaux pour la thématique au cours du temps. La période observée est évidemment marquée par une très forte discontinuité avec l'arrivée du Covid-19. Mais quel est le calendrier précis de son impact sur la presse du Bénin ?
+
+```{r, echo=FALSE}
+#### ---------------- when.what ----------------
+#' @title  visualize variation of the topic through time
+#' @name when.what
+#' @description create a table of variation of the topic by media
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param title Title of the graphic
+
+
+when.what <- function (hc = hypercube,
+                       test = FALSE,
+                       minsamp = 20,
+                       mintest = 5,
+                       title = "Who says What ?")
+{
+  
+  tab<-hc
+  {tab$what <-tab$what !="_no_"}
+  
+  tab<-tab[,list(trial = sum(news),success=round(sum(news*what),0)),by = list(when)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  
+  p <- plot_ly(tab,
+               x = ~as.character(when),
+               y = ~estimate*100,
+               color= ~index,
+               colors= mycol,
+               hoverinfo = "text",
+               text = ~paste('Time: ',when,
+                             '<br /> Total news  : ', round(trial,0),
+                             '<br /> Topic news : ', round(success,0),
+                             '<br /> % observed  : ', round(estimate*100,2),'%',
+                             '<br /> % estimated : ', round(null.value*100,2),'%',
+                             '<br /> Salience : ', round(salience,2),  
+                             '<br /> p.value : ', round(p.value,4)),
+               type = "bar")  %>%
+    layout(title = title,
+           yaxis = list(title = "% news"),
+           barmode = 'stack')
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+
+
+# Modify time period by month
+hc2 <- hc %>% mutate(when = cut(when,breaks="month"))
+
+
+res_when_what<- when.what(hc=hc2, 
+                          test=TRUE,
+                          minsamp=5,
+                          mintest=1,
+                          title = "Variation temporelle (When.What)")
+
+
+res_when_what$plotly
+```
+- **Commentaire** : Comme dans l'ensemble des pays du Monde, on observe un pic maximal en mars-avril 2020 avec plus de 20% des nouvelles parlant de pandémie contre moins de 1% au cours de l'année précédente. Passée cette période d'intérêt maximal, on observe une stabilisation aux alentours de 7 à 10% des nouvelles publiées. 
+
+
+
+#### Variations spatiales (Where.What)
+
+Une pandémie étant un phénomène à la fois spatial et temporel, il est intéressant de repérer les pays cités dans les nouvelles quii parlent de pandémie et de repérer les pays qui y ont été associé le plus significativement. 
+
+```{r, echo=FALSE}
+
+#### ---------------- where.what ----------------
+#' @title  visualize spatialization of the topic 
+#' @name where.what
+#' @description create a table of variation of the topic by media
+#' @param hc an hypercube prepared as data.table
+#' @param test : visualize test (TRUE) or salience (FALSE)
+#' @param minsamp : Threshold of sample size requested for salience computation
+#' @param mintest sample size of estimate for chi-square test (default = 5)
+#' @param map a map with coordinates in lat-long
+#' @param proj a projection accepted by plotly
+#' @param title Title of the graphic
+
+
+where.what <- function (hc = hypercube,
+                        test = FALSE,
+                        minsamp = 20,
+                        mintest = 5,
+                        map = world_ctr,
+                        proj = 'azimuthal equal area',
+                        title = "Where said What ?")
+{
+  
+  tab<-hc
+  tab$what <-tab$what !="_no_"
+  
+  tab<-tab[,list(trial = round(sum(news),0),success=round(sum(news*what),0)),by = list(where1)]
+  ref <-round(sum(tab$success)/sum(tab$trial),4)
+  tab$null.value<-ref
+  
+  tab<-testchi2(tabtest=tab,
+                minsamp = minsamp,
+                mintest = mintest)
+  
+  
+  
+  tab<-tab[order(-chi2),]
+  
+  
+  
+  if (test==FALSE) {tab$index =tab$salience
+  tab<-tab[tab$trial > minsamp,]
+  mycol<-brewer.pal(7,"YlOrRd")
+  } 
+  else {tab$index=tab$p.value
+  tab<-tab[tab$trial*tab$null.value>mintest,]
+  mycol<-brewer.pal(7,"RdYlBu")
+  mycol[4]<-"lightyellow"
+  }
+  
+  
+  map<-merge(map,tab,all.x=T,all.y=F,by.x="ISO3",by.y="where1")
+  
+  
+  
+  #map2<-map[is.na(map$pct)==F,]
+  #map2<-st_centroid(map2)
+  #map2<-st_drop_geometry(map2)
+  
+  
+  g <- list(showframe = TRUE,
+            framecolor= toRGB("gray20"),
+            coastlinecolor = toRGB("gray20"),
+            showland = TRUE,
+            landcolor = toRGB("gray50"),
+            showcountries = TRUE,
+            countrycolor = toRGB("white"),
+            countrywidth = 0.2,
+            projection = list(type = proj))
+  
+  
+  
+  p<- plot_geo(map)%>%
+    add_markers(x = ~lon,
+                y = ~lat,
+                sizes = c(0, 250),
+                size = ~success,
+                #             color= ~signif,
+                color = ~index,
+                colors= mycol,
+                hoverinfo = "text",
+                text = ~paste('Location: ',NAME,
+                              '<br /> Total news  : ', round(trial,0),
+                              '<br /> Topic news : ', round(success,0),
+                              '<br /> % observed  : ', round(estimate*100,2),'%',
+                              '<br /> % estimated : ', round(null.value*100,2),'%',
+                              '<br /> Salience : ', round(salience,2),  
+                              '<br /> p.value : ', round(p.value,4))) %>%
+    
+    layout(geo = g,
+           title = title)
+  
+  
+  
+  output<-list("table" = tab, "plotly" =p)
+  
+  return(output)
+  
+}
+
+
+
+
+### Example
+
+map<-readRDS("data/corpus/world_ctr_4326.Rdata")
+hc2<-hc %>% filter(where1 !="_no_", where2 !="_no_")
+
+res_where_what<- where.what(hc=hc2,
+                            test=TRUE,
+                            minsamp=10,
+                            map = map, 
+                            mintest =1,
+                            title = "Variation spatiale (When.What)")
+res_where_what$plotly
+```
+- **Commentaire** : 6.7%  nouvelles qui citent au moins un pays étranger parlent de pandémie ce qui est plus que la moyenne de référence qui était de 5.5% de nouvelles parlant de pandémie. Certains pays sont plus fréquemment associés à la pandémie que d'autres. Ainsi près de 19% des nouvelles parlant de Chine parlent de pandémie au cours de la période d'observation. Il en va de même pour le Royaume-Uni (15.7%), l'Italie (13.4%), l'Inde (11.9%) ou la Russie (10.9%). La France, en revanche, n'est pas spécialement associée à la pandémie (6.3% des nouvelles) même si elle est le pays le plus cité à ce sujet en nombre absolu. Elle demeure en effet présente dans un grand nombre d'autres sujets (économie, sport, culture, politique, ...). Il en va de même pour les Etats-Unis (6.2%).Finalement, d'autres pays sont significativement peu associés à la pandémie comme la Côte d'Ivoire (2.9%) ou le Nigéria (0%).
+
+
+
+#### Prolongements possibles
+
+Au lieu de repérer les pays étrangers, on pourrait essayer de repérer les communes ou département du Bénin qui sont cités dans les nouvelles. Ce qui supposerait de construire un nouveau dictionnaire. On peut évidemment choisir par ailleurs d'autres thèmes que celui des pandémies. 
 
 
 
