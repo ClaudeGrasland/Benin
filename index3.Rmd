@@ -1,0 +1,176 @@
+---
+title: "ECOLE D'ETE CIST 2022"
+subtitle: "Inventaire préparatoire des données"
+date: "`r Sys.Date()`"
+author: 
+ - name: Claude Grasland
+   affiliation: Université de Paris (Diderot), UMR 8504 Géographie-cités, FR 2007 CIST
+logo: "data/figures/HDX.png"  
+output:
+  rzine::readrzine:
+    highlight: kate
+    number_sections: true
+csl: Rzine_citation.csl
+bibliography: biblio.bib
+nocite: |
+  @*
+link-citations: true
+#licence: "[![licensebuttons by-sa](https://licensebuttons.net/l/by-sa/3.0/88x31.png)](https://creativecommons.org/licenses/by-sa/4.0)"
+#giturl: "[![Code source on GitHub](https://badgen.net/badge/Code%20source%20on%20/GitHub/blue?icon=github)](xxx)"
+#doi: "[![DOI:xxx](https://zenodo.org/badge/DOI/xxx.svg)](https://doi.org/xxx)"
+---
+
+
+```{r setup, include=FALSE}
+
+library(knitr)
+library(rzine)
+library(sf)
+library(leaflet)
+library(FactoMineR)
+library(mapsf)
+library(data.table)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+library(mapview)
+library(DT)
+library(stargazer)
+library(wbstats)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+library(quanteda)
+library(tidytext)
+library(plotly)
+library(RColorBrewer)
+
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=TRUE,
+	             cache=FALSE,
+               prompt=FALSE,
+               tidy=FALSE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               class.source="bg-info",
+               class.output="bg-warning")
+
+# opts_knit$set(width=75)
+```
+
+
+# DONNEES INDIVIDUELLES
+
+Les données individuelles sont celles qui offrent les plus riches possibilités de traitement puisqu'il est possible de les agréger selon des dimensions sociales ou spatiale multiples et ainsi produire des tableaux en nombre virtuellement infini. Elles posent cependant des questions de nature différentes selon qu'elles portent sur un échantillon limité ou une population exhaustive.
+
+**Mouftaou Amadou Sanni** souligne l'imporance de l'IREDA qui a réalisé un inventaire des Recensements de Population (RGPHs) et Enquetes Demographiques d'acces libre que l'on peut trouver en suivant   [ce lien]([www.ireda.ceped.org). A partir de ce lien, on peut accéder librement en ligne aux Recensements et Enquetes Démographiques de 23 pays d'Afrique Subsaharienne y compris le Benin.
+
+> "IREDA: Inventaires des Recensements et Enquetes en Afrique" est un projet Exécuté par CEPED/Paris en collaborations avec des intitutions afticaines de collecte de données et de Recherche dont mon Institution le CEFORP/Cotonou. Ce projet a démarré en 2008; il s'est inscrit dans la dynamique de sauvegarde, de conservation et de valorisstion des opérations de collecte sous la forme d'inventaires documentés. Il a été co-financé par Paris21-INSEE-IRD-OIF-CESD "Statistiwues pour Développement 
+
+A partir du site de l'IREDA, on peut notamment accéder à un catalogue d'archives des enquêtes et recensement du Benin en suivant [ce lien](https://nada.insae.bj/index.php/catalog) qui comporte pas moins de 30 fiches descriptives d'enquêtes ou de recensements.
+
+## Le RGPH de 2013
+
+Parmi les ressources disponibles, une source incontournable est naturellement le dernier recensement du Benin pour lequel on peut retrouver un grand nombre de fichiers et de publications relatives à la collecte et aux résultats en suivant [ce lien](https://nada.insae.bj/index.php/catalog/18) qui donne accès au téléchargement direct de l'ensemble des archives disponibles. 
+
+
+```{r, fig.width=8, echo=FALSE}
+knitr::include_graphics("data/figures/RGP2013_Benin_catalogue.png")
+```
+
+
+### Métadonnées
+
+Avant toute exploitation statistique des données, il peut être intéressant de montrer aux étudiants tout le détail du processus de réalisation du recensement en s'appuyant à la fois sur la [documentation générale](https://nada.insae.bj/index.php/ddibrowser/18/export/?format=pdf&generate=yes) et sur le [bulletin d'enquête](https://nada.insae.bj/index.php/catalog/18/download/301) proprement dit 
+
+```{r, fig.width=8, echo = FALSE}
+knitr::include_graphics("data/figures/RGP2013_Benin_bulletin.png")
+```
+
+Mais bien d'autres documents méritent également d'être analysés, notamment ceux relatifs aux procédures de recueil, saisie ou contrôle et ceux relatifs au coût financier de l'opération de recensement. 
+
+### Rapports officiels
+
+La relative ancienneté de ce recensement présente en fait l'avantage de montrer l'ensemble des exploitations officielles qui ont pu en être faites sous l'égide de l'INSAE, à destination des décideurs politiques de tous niveaux mais aussi des entreprises ou des citoyens. Le point commun de la majorité des rapports est de fournir un très grand nombre de tableaux croisés (tris à plat) qui présentent les dénombrement des populations et des ménages à touts les échelles. On notera à cet égard le grand intérêt de la collection des *cahiers de village* qui fournissent pour chacun des douze départements du Bénin des tableaux très précis des situations locales. Malheureusement, seule une partie d'entre eux fournit une cartographie des contours des arrondissements (niveau de découpage infracommunal) et il est en général impossible de localiser les villages qui sont le niveau géographique d'observation le plus fin. Notons enfin que les seules cartes fournies dans ces rapports le sont à l'échelle des départements mais pour ainsi dire jamais à l'échelles des communes et encoremoins à celle des arrondissements.
+
+```{r, fig.width=8, echo =FALSE}
+knitr::include_graphics("data/figures/RGP2013_Benin_zonage.png")
+```
+
+
+> **La cartographie locale** semble donc être un enjeu très important pour l'école d'été CIST 2022, mais il ne semble pas forcément évident d'obtenir les contours des unités spatiales de collecte les plus petites (arrondissements, villages) ni même leur géolocalisation. Ces données ne sont en tous les cas pas disponibles sur le site du recensement que nous avons examinée. Elle relèvent probablement d'u autre organisme national (Insitut Géographique National ?) à moins qu'elles ne soient soumises à des règles de confidentialité. 
+
+
+### Données individuelles
+
+Nous avons découvert à notre grande surprise que les bulletins individuels de recensement des populations et des ménages sont librement accessibles dans le dossier d'archive mis à la disposition du public sous l'appellation "masque de saisie" en suivant [ce lien](https://nada.insae.bj/index.php/catalog/18/download/444). Plus précisément, on obtient un dossier contenant deux fichiers :
+
+- *le fichier de données INSAE_RGPH4_2013.dat* (978 Mo) contient l'enssemble exhaustif des informations sur les points d'enquête (localisation en département, commune, arrondissement, village, bloc, numéro de ménage),  les individus, les ménages et les décès survenus au cours des dernières années.
+- *le dictionnaire de métadonnées INSAE_RGPH4_2013.dcf* (103 Ko) décrit de façon précise et détaillée les champs d'information et les codes de chacune des variables.
+
+On peut éventuellement lire le fichier en se servant d'un programme R, mais celui-ci est très lourd (près de 20 millions de lignes) et il est a premièr vue plus simple de l'ouvrir avec le logiciel CSPro qui est l'application qui a été utilisée pour réaliser le recensement au Benin comme dans de nombreux pays africains. 
+
+> CSPro, abréviation de **Census and Survey Processing System** est un ensemble logiciel comprenant compilateur et différents outils spécialisés dans le développement d’applications de collecte, visualisation, traitement et analyse de données. C’est un logiciel développé par le Census Bureau des États-Unis ainsi que ICF international. Serpro S.A était aussi impliqué dans les premières étapes du développement de CSPro. Le financement de ce programme provient principalement de l’USAID. La première version de CSPro remonte à mai 2000, cependant le développement de ses ancêtres : ISSA et IMPS remonte a plus de 30 années. Les dernières versions du compilateur et des outils sont conçues pour être utilisées sur les ordinateurs ayant comme système d'exploitation Windows 7 et plus. Cependant, les applications implémentées avec CSPro 7+ peuvent être déployées sur n’importe quel ordinateur, tablette, smartphone utilisant Android, Windows UWP ou Windows 7, 8 , 10.  CSPro dispose d’un environnement de développement très simple, mais la puissance de son langage de programmation propre : Le Cspro Programming Language (CPL) lui permet de concevoir des applications complexes et intelligentes susceptibles d’être utilisées dans des domaines variés (Formulaires électroniques pour  Enquêtes et Recensements, implémentation de système d'information sophistiqués : Suivi-Evaluation, Administration et Gestion d’entreprises etc.) Source : [Wikipedia.France](https://fr.wikipedia.org/wiki/CSPro)
+
+Ce logiciel étant gratuit, nous avons pu effectuer un test d'utilisation sur les fichiers du Benin qui s'ouvrent effectivement sans difficultés et peuvent être ainsi décodés rapidement : 
+
+
+```{r, fig.width=8, echo =FALSE}
+knitr::include_graphics("data/figures/RGP2013_Benin_fiche.png")
+```
+
+- **Remarques**: Si la disponibilité de ces données semble avérée (lien web public) il faut toutefois faire preuve de prudence dans leur dissémination car il semble possible d'accéder à des données individuelles sensibles ce qui poserait des questions éthiques. Notons pour l'anecdote que l'une des professions possible est "*Président de la République*" (code 001), catégorie qui n'apparaît que pour trois individus sur les dix millionsque compte le Benin... Si on souhaite utiliser ces données dans un cadre pédagogique, il sera sans doute préférable de les anonymiser ce qui constitue en soi un excellent exercice pédagogique. 
+
+
+### Création de tableaux 
+
+
+
+
+
+
+# Bibliographie {-}
+
+<div id="refs"></div>
+
+
+# Annexes {-}
+
+
+## Infos session  {-}
+
+```{r session_info, echo=FALSE}
+kableExtra::kable_styling(kable(sessionRzine()[[1]], row.names = F))
+kableExtra::kable_styling(kable(sessionRzine()[[2]], row.names = F))
+```
+
+
+
+
+
+## Citation {-}
+
+```{r generateBibliography, echo=FALSE}
+
+cat(readLines('cite.bib'), sep = '\n')
+
+``` 
+
+<br>
+
+## Glossaire {- #endnotes}
+
+```{js, echo=FALSE}
+
+$(document).ready(function() {
+  $('.footnotes ol').appendTo('#endnotes');
+  $('.footnotes').remove();
+});
+
+```
+
+
