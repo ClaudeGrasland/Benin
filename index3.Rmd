@@ -132,7 +132,7 @@ Nous allons montrer deux exemples d'utilisation pédagogique des données de rec
 
 #### Migrations inter-départementales
 
-Noous utilisons ici un tableau qui a été réalisé à l'aide de CSPro en croisant les variables "*Département de résidence actuel*" et "*Département de résidence antérieur*". Nous excluons de ce fait les mobilités internationales entrantes et nous ne prenons pas en compte l'ancienneté de la migration qui est variable puisque le recensement demande uniquement le **dernier** changement de domicile. 
+Nous utilisons ici un tableau qui a été réalisé à l'aide de CSPro en croisant les variables "*Département de résidence actuel*" et "*Département de résidence antérieur*". Nous excluons de ce fait les mobilités internationales entrantes et nous ne prenons pas en compte l'ancienneté de la migration qui est variable puisque le recensement demande uniquement le **dernier** changement de domicile. 
 
 ```{r, echo=FALSE, }
 mig<-read.table("data/rp2013/mobil2013.csv", sep=";",header=T)
@@ -140,12 +140,35 @@ tab<-reshape2::dcast(mig,formula = name_i~name_j,value.var = "Fij")
 mat<-as.matrix(tab[,-1])
 rownames(mat)<-tab[,1]
 colnames(mat)<-substr(colnames(mat),1,3)
-mat<-addmargins(mat)
-kable(mat,caption = "Migrations interdépartementales au Bénin  (source : RGPH 2013)")
+mat2<-addmargins(mat)
+kable(mat2,caption = "Migrations interdépartementales au Bénin  (source : RGPH 2013)")
 ```
 
+> **Commentaire** : Les lignes correspondent au département de résidence précédente et les colonnes au département de résidence actuelle. La diagonale correspond aux individus présents dans un département n'ayant pas déclaré avoir résidé dans un autre. Les personnes recensées qui déclare avoir résidé à l'étranger sont exclues ce qui explique que le total général soit 9.62 millions d'habitants et non pas de 10 millions. On peut déduire de la somme des lignes et des colonnes (hors diagonale) la somme des départs et des arrivées, ce qui permet par la suite de calculer le volume des migrations et le solde migratoire. On peut enfin examiner pour chaque paire de département la quantité d'échanges bilatéraux ainsi que les transferts nets. Par exemple, on trouve 1319 migrants du département d'Atacora vers celui d'Alibori contre 3246 dans la direction opposée. 
+
+Ce tableau peut donc servir de base à une initiation à l'étude des migrations interne du pays, un premier exercice pouvant consister à en extraire les indicateurs de base sur les départements.
 
 
+```{r, echo=FALSE}
+département<-rownames(mat)
+population<-apply(mat,1,FUN="sum")
+stables<-diag(mat)
+mat0<-mat
+diag(mat0)<-0
+départs<-apply(mat0,1,FUN="sum")
+arrivées<-apply(mat0,2,FUN="sum")
+volume<-arrivées+départs
+solde<-arrivées-départs
+asymétrie<-solde/volume
+tab<-data.frame(département,population,stables,départs, arrivées,volume,solde)
+tab$tx_mob<-100*volume/population
+tab$tx_emi<-100*départs/population
+tab$tx_imm<-100*arrivées/population
+tab$tx_asy<-100*solde/volume
+kable(tab,digits = c(0,0,0,0,0,0,0,2,2,2,2),row.names = F, caption = "Synthèses des migrations inter-départementales du Bénin (source : RGPH, 2013)")
+```
+
+> **Commentaire** : Si les chiffres du recensement sont exacts et si nous n'avons pas commis d'erreurs ... le tableau met en évidence des évolutions démographiques très contrastées d'un département à l'autre en termes de mobilité et d'attractivité migratoire. Ainsi le département d'**Alibori** se caractérise apparemment par une très faible mobilité avec un taux d'émigration de 3.3\% et un taux d'immigration de 1.5\% soit un solde migratoire négatif de -15219 habitants. Le département de l'**Atlantique** est quant à lui le plus attractif avec un solde migratoire de +248063 habitant qui s'explique par un taux d'immigration exceptionnel (près du tiers de ses habitants actuels ont résidé antérieurement dans un autre département). A l'inverse, le département du **Littoral** est caractérisé par un solde migratoire de -246908 habitant qui s'explique par une très forte mobilité combinant une assez forte immigration (16\%) et une très forte immigration (45\%). On peut supposer que cela correspond à un phénomène de plaque tournante de la métropole de Cotonou qui attire et renvoie de nombreux migrants de tout le pays tout en s'étalant progressivement au delà des limites étroites de son département vers des périphéries urbaines situées dans les départements de l'Atlantique et de Oueme. Notons pour finir que le département de **Borgou** connaît également une évolution très positive liée à la croissance de la ville de Parakou, métropole du Nord.  
 
 
 
