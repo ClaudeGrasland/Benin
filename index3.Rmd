@@ -112,7 +112,7 @@ Nous avons découvert à notre grande surprise que les bulletins individuels de 
 - *le fichier de données INSAE_RGPH4_2013.dat* (978 Mo) contient l'enssemble exhaustif des informations sur les points d'enquête (localisation en département, commune, arrondissement, village, bloc, numéro de ménage),  les individus, les ménages et les décès survenus au cours des dernières années.
 - *le dictionnaire de métadonnées INSAE_RGPH4_2013.dcf* (103 Ko) décrit de façon précise et détaillée les champs d'information et les codes de chacune des variables.
 
-On peut éventuellement lire le fichier en se servant d'un programme R, mais celui-ci est très lourd (près de 20 millions de lignes) et il est a premièr vue plus simple de l'ouvrir avec le logiciel CSPro qui est l'application qui a été utilisée pour réaliser le recensement au Benin comme dans de nombreux pays africains. 
+On peut  lire le fichier en se servant d'un programme R, mais celui-ci est très lourd (près de 20 millions de lignes) et pour les utilisateurs débuutants de R il est  plus simple de l'ouvrir avec le logiciel CSPro qui est l'application qui a été utilisée pour réaliser le recensement au Benin comme dans de nombreux pays africains. 
 
 > CSPro, abréviation de **Census and Survey Processing System** est un ensemble logiciel comprenant compilateur et différents outils spécialisés dans le développement d’applications de collecte, visualisation, traitement et analyse de données. C’est un logiciel développé par le Census Bureau des États-Unis ainsi que ICF international. Serpro S.A était aussi impliqué dans les premières étapes du développement de CSPro. Le financement de ce programme provient principalement de l’USAID. La première version de CSPro remonte à mai 2000, cependant le développement de ses ancêtres : ISSA et IMPS remonte a plus de 30 années. Les dernières versions du compilateur et des outils sont conçues pour être utilisées sur les ordinateurs ayant comme système d'exploitation Windows 7 et plus. Cependant, les applications implémentées avec CSPro 7+ peuvent être déployées sur n’importe quel ordinateur, tablette, smartphone utilisant Android, Windows UWP ou Windows 7, 8 , 10.  CSPro dispose d’un environnement de développement très simple, mais la puissance de son langage de programmation propre : Le Cspro Programming Language (CPL) lui permet de concevoir des applications complexes et intelligentes susceptibles d’être utilisées dans des domaines variés (Formulaires électroniques pour  Enquêtes et Recensements, implémentation de système d'information sophistiqués : Suivi-Evaluation, Administration et Gestion d’entreprises etc.) Source : [Wikipedia.France](https://fr.wikipedia.org/wiki/CSPro)
 
@@ -126,7 +126,29 @@ knitr::include_graphics("data/figures/RGP2013_Benin_fiche.png")
 - **Remarques**: Si la disponibilité de ces données semble avérée (lien web public) il faut toutefois faire preuve de prudence dans leur dissémination car il semble possible d'accéder à des données individuelles sensibles ce qui poserait des questions éthiques. Notons pour l'anecdote que l'une des professions possible est "*Président de la République*" (code 001), catégorie qui n'apparaît que pour trois individus sur les dix millionsque compte le Benin... Si on souhaite utiliser ces données dans un cadre pédagogique, il sera sans doute préférable de les anonymiser ce qui constitue en soi un excellent exercice pédagogique. 
 
 
-### Création de tableaux 
+### Exemple d'application : les migrations
+
+Nous allons montrer deux exemples d'utilisation pédagogique des données de recensement pour l'étude des mobilités spatiales :
+
+#### Migrations inter-départementales
+
+Noous utilisons ici un tableau qui a été réalisé à l'aide de CSPro en croisant les variables "*Département de résidence actuel*" et "*Département de résidence antérieur*". Nous excluons de ce fait les mobilités internationales entrantes et nous ne prenons pas en compte l'ancienneté de la migration qui est variable puisque le recensement demande uniquement le **dernier** changement de domicile. 
+
+```{r, echo=FALSE, }
+mig<-read.table("data/rp2013/mobil2013.csv", sep=";",header=T)
+tab<-reshape2::dcast(mig,formula = name_i~name_j,value.var = "Fij")
+mat<-as.matrix(tab[,-1])
+rownames(mat)<-tab[,1]
+colnames(mat)<-substr(colnames(mat),1,3)
+mat<-addmargins(mat)
+kable(mat,caption = "Migrations interdépartementales au Bénin  (source : RGPH 2013)")
+```
+
+
+
+
+
+
 
 
 
