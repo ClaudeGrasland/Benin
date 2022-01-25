@@ -11,7 +11,7 @@ codage<-read.table("rp2013/code_loc.csv",sep=";",header=T, encoding = "UTF-8",co
 codes<-codage$NAME
 names(codes)<-codage$CODE
 
-#test<-z[,1:1000]
+test<-z[,1:1000]
 test<-z
 test$ref<-as.factor(substr(test$rec,17,18)=="01")
 levels(test$ref)<-c("N","O")
@@ -42,11 +42,11 @@ test<-test[,-c(1,2)]
 t2=Sys.time()
 t2-t1
 
-#saveRDS(test,"data/rp2013/mobind.RDS")
+saveRDS(test,"data/rp2013/mobind.RDS")
 
 test2<-filter(test,mob12+mob23>0)
 
-#saveRDS(test2,"data/rp2013/mobind2.RDS")
+saveRDS(test2,"data/rp2013/mobind2.RDS")
 
 test3 <- filter(test2,is.na(dat2)==FALSE) %>% filter(mob12+mob23==2)
 saveRDS(test3,"data/rp2013/mobind3.RDS")
