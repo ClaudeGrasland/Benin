@@ -207,6 +207,16 @@ kable(head(dt2))
 Comme on peut le voir avec les deux exemples précédents, le tableau permet de repérer soit des **trajectoires complexes** mettant en jeu trois lieux différents, soit des **trajectoires d'aller et retour** concernant des individus qui sont revenus dans leur commune de naissance après avoir séjourné dans une autre commune. 
 
 
+```{r}
+dt3<-dt[ref=="O"][as.numeric(loc1)<150][substr(loc1,3,3)!=0][substr(loc2,3,3)!=0][dat1<3000][dat1<1998]
+dt3$age<-2013-dt3$dat1
+hist(dt3$age)
+summary(dt3$age)
+```
+
+
+
+
 ### Exemple des mobilités depuis ou vers Cotonou
 
 Etudions à tire d'exemple le cas de l'ensemble des personnes qui ont déclarées être présentes dans la commune de Cotonou (code 081) a un moment ou un autre de leur parcours migratoire. On peut distinguer 8 cas
